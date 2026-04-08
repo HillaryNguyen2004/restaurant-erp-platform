@@ -1,9 +1,9 @@
 import { randomUUID } from 'crypto';
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { IUserRepository } from '../repositories/user/user.repository.interface';
-import { ISessionRepository } from '../repositories/session/session.repository.interface';
-import { IPasswordHasher } from '../ports/password-hasher.interface';
-import { ITokenProvider } from '../ports/token-provider.interface';
+import * as userRepositoryInterface from '../repositories/user/user.repository.interface';
+import * as sessionRepositoryInterface from '../repositories/session/session.repository.interface';
+import * as passwordHasherInterface from '../ports/password-hasher.interface';
+import * as tokenProviderInterface from '../ports/token-provider.interface';
 import {
   PASSWORD_HASHER,
   SESSION_REPOSITORY,
@@ -17,11 +17,14 @@ import { UserSession } from '../domains/entities/user-session.entity';
 @Injectable()
 export class Authenticator {
   constructor(
-    @Inject(USER_REPOSITORY) private readonly userRepo: IUserRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepo: userRepositoryInterface.IUserRepository,
     @Inject(SESSION_REPOSITORY)
-    private readonly sessionRepo: ISessionRepository,
-    @Inject(PASSWORD_HASHER) private readonly hasher: IPasswordHasher,
-    @Inject(TOKEN_PROVIDER) private readonly tokenProvider: ITokenProvider,
+    private readonly sessionRepo: sessionRepositoryInterface.ISessionRepository,
+    @Inject(PASSWORD_HASHER)
+    private readonly hasher: passwordHasherInterface.IPasswordHasher,
+    @Inject(TOKEN_PROVIDER)
+    private readonly tokenProvider: tokenProviderInterface.ITokenProvider,
   ) {}
 
   async login(dto: LoginDto): Promise<TokenPair> {
