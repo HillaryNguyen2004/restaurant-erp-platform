@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { User } from '../entities/user.entity';
 import { Role } from '../entities/role.entity';
-import { DomainEvent } from './domain-event';
+import { DomainEvent } from './domain.event';
 
 export class RoleRemovedEvent extends DomainEvent {
   readonly eventType = 'role.removed';
