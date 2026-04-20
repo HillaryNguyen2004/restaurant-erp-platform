@@ -32,7 +32,7 @@ import {
 @Module({
   imports: [
     JwtModule.register({
-      secret: 'dev-secret',
+      secret: process.env.JWT_SECRET ?? 'dev-secret',
     }),
   ],
   controllers: [AuthenticationController, ProfileController, RoleController],

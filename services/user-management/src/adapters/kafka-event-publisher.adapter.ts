@@ -9,7 +9,7 @@ export class KafkaEventPublisherAdapter
 {
   private readonly producer = new Kafka({
     clientId: 'user-management-service',
-    brokers: ['localhost:9092'],
+    brokers: [process.env.KAFKA_BROKER ?? 'kafka:9092'],
   }).producer();
 
   async onModuleInit(): Promise<void> {
