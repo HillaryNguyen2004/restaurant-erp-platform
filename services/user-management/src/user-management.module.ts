@@ -48,7 +48,7 @@ import {
     AuthenticationServiceImpl,
     ProfileServiceImpl,
     RoleServiceImpl,
-
+    SessionServiceImpl,
     {
       provide: AUTHENTICATION_SERVICE,
       useExisting: AuthenticationServiceImpl,
