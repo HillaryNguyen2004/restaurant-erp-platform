@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 
-import { AuthenticationController } from './controllers/authentication.controller.impl';
-import { ProfileController } from './controllers/profile.controller';
-import { RoleController } from './controllers/role.controller';
+import { AuthenticationControllerImpl } from './controllers/authentication.controller.impl';
+import { ProfileControllerImpl } from './controllers/profile.controller.impl';
+import { RoleControllerImpl } from './controllers/role.controller.impl';
 
 import { AuthenticationServiceImpl } from './services/authenticaton.service.impl';
-import { ProfileService } from './services/profile.service';
-import { RoleService } from './services/role.service';
-import { SessionService } from './services/session.service';
+import { ProfileServiceImpl } from './services/profile.service.impl';
+import { RoleServiceImpl } from './services/role.service.impl';
+import { SessionServiceImpl } from './services/session.service.impl';
 
 import { UserRepositoryImpl } from './repositories/user/user.repository.impl';
 import { RoleRepositoryImpl } from './repositories/role/role.repository.impl';
@@ -38,13 +38,16 @@ import {
     }),
   ],
 
-  controllers: [AuthenticationController, ProfileController, RoleController],
+  controllers: [
+    AuthenticationControllerImpl,
+    ProfileControllerImpl,
+    RoleControllerImpl,
+  ],
 
   providers: [
     AuthenticationServiceImpl,
-    ProfileService,
-    RoleService,
-    SessionService,
+    ProfileServiceImpl,
+    RoleServiceImpl,
 
     {
       provide: AUTHENTICATION_SERVICE,
@@ -52,15 +55,15 @@ import {
     },
     {
       provide: PROFILE_SERVICE,
-      useExisting: ProfileService,
+      useExisting: ProfileServiceImpl,
     },
     {
       provide: ROLE_SERVICE,
-      useExisting: RoleService,
+      useExisting: RoleServiceImpl,
     },
     {
       provide: SESSION_SERVICE,
-      useExisting: SessionService,
+      useExisting: SessionServiceImpl,
     },
 
     {

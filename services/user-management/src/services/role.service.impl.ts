@@ -1,3 +1,5 @@
+// services/role.service.ts
+
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as userRepositoryInterface from '../repositories/user/user.repository.interface';
 import * as roleRepositoryInterface from '../repositories/role/role.repository.interface';
@@ -9,14 +11,17 @@ import {
 } from '../constants/injection-tokens';
 import { RoleAssignedEvent } from '../domains/events/role-assigned.event';
 import { RoleRemovedEvent } from '../domains/events/role-removed.event';
+import { IRoleService } from './interfaces/role.service.interface';
 
 @Injectable()
-export class RoleService {
+export class RoleServiceImpl implements IRoleService {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepo: userRepositoryInterface.IUserRepository,
+
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepo: roleRepositoryInterface.IRoleRepository,
+
     @Inject(EVENT_PUBLISHER)
     private readonly eventPublisher: eventPublisherInterface.IEventPublisher,
   ) {}

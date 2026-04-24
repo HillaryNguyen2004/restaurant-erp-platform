@@ -12,7 +12,7 @@ import * as authenticationServiceInterface from '../services/interfaces/authenti
 
 @ApiTags('authentication')
 @Controller('auth')
-export class AuthenticationController implements IAuthenticationController {
+export class AuthenticationControllerImpl implements IAuthenticationController {
   constructor(
     @Inject(AUTHENTICATION_SERVICE)
     private readonly authService: authenticationServiceInterface.IAuthenticationService,

@@ -6,7 +6,7 @@ import * as sessionRepositoryInterface from '../repositories/session/session.rep
 import { SESSION_REPOSITORY } from '../constants/injection-tokens';
 
 @Injectable()
-export class SessionService implements ISessionService {
+export class SessionServiceImpl implements ISessionService {
   constructor(
     @Inject(SESSION_REPOSITORY)
     private readonly sessionRepo: sessionRepositoryInterface.ISessionRepository,
