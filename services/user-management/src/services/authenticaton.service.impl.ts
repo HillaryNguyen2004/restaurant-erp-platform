@@ -13,9 +13,10 @@ import {
 import { LoginDto } from '../dtos/login.dto';
 import { TokenPair } from '../domains/value-objects/token-pair.vo';
 import { UserSession } from '../domains/entities/user-session.entity';
+import { IAuthenticationService } from './interfaces/authentication.service.interface';
 
 @Injectable()
-export class Authenticator {
+export class AuthenticationServiceImpl implements IAuthenticationService {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepo: userRepositoryInterface.IUserRepository,
