@@ -1,64 +1,181 @@
 "use client";
-
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  getMenu,
+  getCart,
+  addToCart,
+  removeCartItem,
+  placeOrder,
+} from "@/app/services/customer.service";
+import type { MenuItem } from "@/app/types/customer.types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Filter, Plus, Search } from "lucide-react";
-
-const MOCK_MENU = [
-    { id: 1, name: "Phở Bò Đặc Biệt", price: 85000, category: "Món nước", image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=400&q=80", tags: ["Bán chạy", "Gluten-Free"] },
-    { id: 2, name: "Cơm Tấm Sườn Bì", price: 65000, category: "Cơm", image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80", tags: [] },
-    { id: 3, name: "Bún Chả Hà Nội", price: 75000, category: "Món nước", image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80", tags: ["Đặc biệt"] },
-    { id: 4, name: "Gỏi Cuốn Tôm Thịt", price: 45000, category: "Khai vị", image: "https://images.unsplash.com/photo-1512058560550-427499152a05?w=400&q=80", tags: ["Lành mạnh"] },
-    { id: 5, name: "Bánh Mì Thịt Nướng", price: 35000, category: "Bánh mì", image: "https://images.unsplash.com/photo-1509722747041-0300ed7007cc?w=400&q=80", tags: ["Bán chạy"] },
-    { id: 6, name: "Cà Phê Sữa Đá", price: 29000, category: "Đồ uống", image: "https://images.unsplash.com/photo-1541167760496-162955ed8a9f?w=400&q=80", tags: [] },
-];
+import { Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 export default function CustomerMenuPage() {
-    return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <section className="space-y-4">
-                <h2 className="text-3xl font-black text-emerald-950 tracking-tight">Hôm nay bạn muốn ăn gì?</h2>
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 w-4 h-4" />
-                        <Input className="pl-10 border-emerald-100 bg-white shadow-sm focus-visible:ring-emerald-500" placeholder="Tìm kiếm món ăn..." />
-                    </div>
-                    <Button variant="outline" className="border-emerald-200 text-emerald-700 bg-white">
-                        <Filter className="w-4 h-4 mr-2" /> Lọc danh mục
-                    </Button>
-                </div>
-            </section>
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [showCart, setShowCart] = useState(false);
 
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {MOCK_MENU.map((item) => (
-                    <Card key={item.id} className="overflow-hidden border-none shadow-lg hover:shadow-xl transition-all duration-300 group">
-                        <div className="relative h-48 overflow-hidden">
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                            <div className="absolute top-3 left-3 flex flex-wrap gap-2">
-                                {item.tags.map(tag => (
-                                    <Badge key={tag} className="bg-emerald-500/90 text-[10px] uppercase font-bold backdrop-blur-sm border-none">{tag}</Badge>
-                                ))}
-                            </div>
-                        </div>
-                        <CardHeader className="p-4 pb-0">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">{item.category}</p>
-                                    <CardTitle className="text-lg font-bold text-emerald-950">{item.name}</CardTitle>
-                                </div>
-                                <p className="font-black text-emerald-600">{(item.price / 1000).toFixed(0)}k</p>
-                            </div>
-                        </CardHeader>
-                        <CardFooter className="p-4 pt-4">
-                            <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-md shadow-emerald-200 active:scale-95 transition-transform">
-                                <Plus className="w-4 h-4" /> Thêm vào đơn
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                ))}
-            </section>
+  // Fetch menu
+  const { data: menu = [], isLoading: menuLoading } = useQuery({
+    queryKey: ["customer-menu"],
+    queryFn: getMenu,
+  });
+
+  // Fetch Cart
+  const { data: cart } = useQuery({
+    queryKey: ["customer-cart"],
+    queryFn: getCart,
+  });
+
+  // Add to cart
+  const { mutate: addItem } = useMutation({
+    mutationFn: (menuItemId: number) => addToCart(menuItemId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["customer-cart"] }),
+  });
+
+  // Remove from cart
+  const { mutate: removeItem } = useMutation({
+    mutationFn: (itemId: string) => removeCartItem(itemId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["customer-cart"] }),
+  });
+
+  // Place order
+  const { mutate: submitOrder, isPending: ordering } = useMutation({
+    mutationFn: () => placeOrder("Bàn 05"), // Sau này lấy từ QR code / auth
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-cart"] });
+      setShowCart(false);
+      alert("Order placed successfully! 🎉");
+    },
+  });
+
+  const filteredMenu = menu.filter((item) =>
+    item.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const cartCount = cart?.items.reduce((sum, i) => sum + i.qty, 0) ?? 0;
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Search and Cart Button */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+          <Input
+            className="pl-9"
+            placeholder="Search items..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-    );
+        <Button
+          variant="outline"
+          onClick={() => setShowCart(!showCart)}
+          className="relative"
+        >
+          <ShoppingCart className="w-4 h-4" />
+          {cartCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-xs rounded-full flex items-center justify-center">
+              {cartCount}
+            </span>
+          )}
+        </Button>
+      </div>
+
+      {/* Cart */}
+      {showCart && (
+        <div className="border rounded-xl p-4 space-y-3 bg-gray-50">
+          <h3 className="font-semibold">Cart</h3>
+          {cart?.items.length === 0 ? (
+            <p className="text-sm text-gray-400">No items in cart</p>
+          ) : (
+            cart?.items.map((item) => (
+              <div key={item.id} className="flex items-center justify-between">
+                <span className="text-sm">
+                  {item.name} x{item.qty}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">
+                    {(item.price * item.qty).toLocaleString()}đ
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => removeItem(item.id)}
+                  >
+                    <Trash2 className="w-3 h-3 text-rose-500" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+          {(cart?.items.length ?? 0) > 0 && (
+            <>
+              <div className="border-t pt-2 flex justify-between font-semibold">
+                <span>Total</span>
+                <span>{cart?.total.toLocaleString()}đ</span>
+              </div>
+              <Button
+                className="w-full"
+                disabled={ordering}
+                onClick={() => submitOrder()}
+              >
+                {ordering ? "Placing order..." : "Place Order"}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* menu */}
+      {menuLoading ? (
+        <div className="grid grid-cols-2 gap-3">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="h-48 rounded-xl bg-gray-100 animate-pulse"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {filteredMenu.map((item: MenuItem) => (
+            <Card key={item.id} className="overflow-hidden">
+              <img
+                src={item.image}
+                alt={item.name}
+                className="w-full h-32 object-cover"
+                loading="lazy"
+              />
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm">{item.name}</CardTitle>
+                <div className="flex gap-1 flex-wrap">
+                  {item.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </CardHeader>
+              <CardFooter className="p-3 pt-1 flex justify-between items-center">
+                <span className="font-semibold text-emerald-600">
+                  {(item.price / 1000).toFixed(0)}k
+                </span>
+                <Button size="sm" onClick={() => addItem(item.id)}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
