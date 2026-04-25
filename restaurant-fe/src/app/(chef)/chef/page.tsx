@@ -1,110 +1,138 @@
 "use client";
-
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getTickets, updateItemStatus } from "@/app/services/chef.service";
+import type { TicketItemStatus } from "@/app/types/chef.types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
 
-const TICKETS = [
-    {
-        id: "B12",
-        table: "Bàn 06",
-        time: "12:15",
-        elapsed: "14m",
-        priority: "high",
-        items: [
-            { name: "Phở Bò Đặc Biệt", qty: 2, note: "Không hành lá", status: "cooking" },
-            { name: "Bún Chả Hà Nội", qty: 1, note: "Thêm nem", status: "pending" },
-        ]
-    },
-    {
-        id: "B15",
-        table: "Bàn 01",
-        time: "12:25",
-        elapsed: "4m",
-        priority: "normal",
-        items: [
-            { name: "Cơm Tấm Sườn Bì", qty: 3, note: "", status: "pending" },
-        ]
-    },
-    {
-        id: "B10",
-        table: "Bàn 03",
-        time: "12:05",
-        elapsed: "24m",
-        priority: "urgent",
-        items: [
-            { name: "Gỏi Cuốn Tôm Thịt", qty: 4, note: "Dị ứng lạc", status: "started" },
-            { name: "Cà Phê Sữa Đá", qty: 2, note: "Nhiều đá", status: "ready" },
-        ]
-    },
-];
-
 export default function ChefKDSPage() {
-    return (
-        <div className="flex gap-6 overflow-x-auto pb-6 h-full min-h-[calc(100vh-140px)]">
-            {TICKETS.map((ticket) => (
-                <Card
-                    key={ticket.id}
-                    className={cn(
-                        "w-80 flex-shrink-0 border-none bg-slate-900 shadow-2xl flex flex-col h-fit animate-in zoom-in-95 duration-300",
-                        ticket.priority === "urgent" ? "ring-2 ring-rose-500" : ""
-                    )}
-                >
-                    <CardHeader className={cn(
-                        "p-4 border-b flex flex-row items-center justify-between space-y-0",
-                        ticket.priority === "urgent" ? "bg-rose-900/40" :
-                            ticket.priority === "high" ? "bg-amber-900/40" : "bg-slate-800"
-                    )}>
-                        <div>
-                            <CardTitle className="text-xl font-black text-white italic">#{ticket.id} - {ticket.table}</CardTitle>
-                            <div className="flex items-center gap-2 mt-1">
-                                <Clock className="w-3 h-3 text-slate-400" />
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{ticket.elapsed} ago</span>
-                            </div>
-                        </div>
-                        {ticket.priority === "urgent" && <AlertCircle className="text-rose-500 w-6 h-6 animate-pulse" />}
-                    </CardHeader>
-                    <CardContent className="p-0 flex-1">
-                        <div className="divide-y divide-slate-800">
-                            {ticket.items.map((item, idx) => (
-                                <div key={idx} className="p-4 space-y-2 group">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex gap-3">
-                                            <span className="text-xl font-black text-rose-500">{item.qty}x</span>
-                                            <div>
-                                                <p className="font-bold text-slate-100">{item.name}</p>
-                                                {item.note && (
-                                                    <p className="text-[10px] inline-block px-1.5 py-0.5 bg-rose-500 text-white font-black uppercase mt-1">
-                                                        {item.note}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <Badge className={cn(
-                                            "text-[9px] font-black uppercase tracking-tighter",
-                                            item.status === "ready" ? "bg-green-600" :
-                                                item.status === "cooking" ? "bg-amber-600" : "bg-slate-700"
-                                        )}>
-                                            {item.status}
-                                        </Badge>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                    <div className="p-4 bg-slate-900 border-t border-slate-800">
-                        <Button className="w-full bg-rose-600 hover:bg-rose-700 text-white font-black tracking-widest uppercase h-12 gap-2 shadow-lg shadow-rose-900/40">
-                            HOÀN TẤT ALL <CheckCircle2 className="w-5 h-5" />
-                        </Button>
-                    </div>
-                </Card>
-            ))}
+  const queryClient = useQueryClient();
 
-            <Card className="w-80 flex-shrink-0 border-2 border-dashed border-slate-800 bg-transparent flex items-center justify-center opacity-40">
-                <p className="text-slate-500 font-bold uppercase tracking-widest">Đang chờ đơn mới...</p>
-            </Card>
-        </div>
+  // Fetch tickets
+  const { data: tickets, isLoading } = useQuery({
+    queryKey: ["chef-tickets"],
+    queryFn: getTickets,
+    refetchInterval: 5 * 1000,
+  });
+
+  // Mutation
+  const { mutate: updateStatus } = useMutation({
+    mutationFn: ({
+      ticketId,
+      itemId,
+      status,
+    }: {
+      ticketId: string;
+      itemId: string;
+      status: TicketItemStatus;
+    }) => updateItemStatus(ticketId, itemId, status),
+
+    // Refresh
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chef-tickets"] });
+    },
+  });
+
+  const nextStatus: Record<TicketItemStatus, TicketItemStatus | null> = {
+    pending: "cooking",
+    cooking: "started",
+    started: "ready",
+    ready: null,
+  };
+
+  const statusColor: Record<TicketItemStatus, string> = {
+    pending: "bg-gray-100 text-gray-600",
+    cooking: "bg-amber-100 text-amber-600",
+    started: "bg-blue-100 text-blue-600",
+    ready: "bg-emerald-100 text-emerald-600",
+  };
+
+  const priorityBorder: Record<string, string> = {
+    normal: "border-gray-200",
+    high: "border-amber-400",
+    urgent: "border-rose-500",
+  };
+
+  if (isLoading)
+    return (
+      <div className="grid grid-cols-3 gap-4 p-6">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-64 rounded-xl bg-gray-100 animate-pulse" />
+        ))}
+      </div>
     );
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
+      {tickets?.length === 0 && (
+        <p className="col-span-3 text-center text-gray-400 mt-20">
+          No tickets yet. Waiting for orders to come in!
+        </p>
+      )}
+
+      {tickets?.map((ticket) => (
+        <Card
+          key={ticket.id}
+          className={cn("border-2", priorityBorder[ticket.priority])}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="flex justify-between text-base">
+              <span>
+                {ticket.table} — #{ticket.id}
+              </span>
+              <span className="flex items-center gap-1 text-sm text-gray-500">
+                <Clock className="w-4 h-4" /> {ticket.elapsed}
+              </span>
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-3">
+            {ticket.items.map((item) => (
+              <div
+                key={item.id}
+                className="p-2 rounded-lg bg-gray-50 space-y-1"
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-sm">
+                    x{item.qty} {item.name}
+                  </span>
+                  <Badge className={statusColor[item.status]}>
+                    {item.status}
+                  </Badge>
+                </div>
+
+                {item.note && (
+                  <p className="text-xs text-rose-500 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {item.note}
+                  </p>
+                )}
+
+                {/* Button to move to the next status */}
+                {nextStatus[item.status] && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full mt-1 text-xs"
+                    onClick={() =>
+                      updateStatus({
+                        ticketId: ticket.id,
+                        itemId: item.id,
+                        status: nextStatus[item.status]!,
+                      })
+                    }
+                  >
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Move on to "{nextStatus[item.status]}"
+                  </Button>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 }
