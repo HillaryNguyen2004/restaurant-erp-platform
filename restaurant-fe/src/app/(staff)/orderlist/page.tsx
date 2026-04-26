@@ -75,7 +75,7 @@ export default function StaffOrdersPage() {
                 </div>
               ))}
               <div className="border-t pt-2 flex justify-between font-semibold text-sm">
-                <span>Tổng</span>
+                <span>Total</span>
                 <span>{order.total.toLocaleString()}đ</span>
               </div>
             </CardContent>

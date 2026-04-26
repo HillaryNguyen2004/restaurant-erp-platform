@@ -59,7 +59,7 @@ export default function AdminLayout({
               className={cn(
                 "w-full justify-center lg:justify-start gap-4 h-12 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600",
                 idx === 0 &&
-                  "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600",
+                "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600",
               )}
             >
               <item.icon className="w-5 h-5" />
@@ -90,7 +90,7 @@ export default function AdminLayout({
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold">{user.email}</p>
+              <p className="text-sm font-bold">{user.role}</p>
               <p className="text-[10px] text-indigo-500 font-semibold uppercase tracking-widest">
                 Business Owner
               </p>

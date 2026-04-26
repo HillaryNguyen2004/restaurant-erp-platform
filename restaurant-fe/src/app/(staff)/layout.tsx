@@ -59,11 +59,11 @@ export default function StaffLayout({
         <div className="p-4 border-t border-amber-800">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-amber-950 font-bold">
-              {user.email[0].toUpperCase()}
+              {user.role[0].toUpperCase()}
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-semibold truncate w-32">
-                {user.email}
+                {user.role}
               </span>
               <span className="text-xs text-amber-400">Staff Mode</span>
             </div>

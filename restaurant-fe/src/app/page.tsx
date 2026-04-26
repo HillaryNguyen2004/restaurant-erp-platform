@@ -1,66 +1,32 @@
 "use client";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Role, useAuth } from "@/providers/auth-provider";
 import { motion } from "framer-motion";
 import {
-  ArrowRight,
-  ChefHat,
-  GlassWater,
-  ShieldCheck,
-  Sparkles,
-  Store,
-  UserCircle2,
+  ArrowRight, ChefHat, GlassWater,
+  ShieldCheck, Sparkles, Store, UserCircle2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
-  const { login, user } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
+
   const handleRoleQuickAccess = (role: Role) => {
-    login(role);
-    router.push(`/${role}`);
+    if (user && user.role === role) {
+      router.push(`/${role}`);
+    } else {
+      router.push(`/auth/login`);
+    }
   };
 
   const roles = [
-    {
-      id: "customer",
-      title: "Customer",
-      desc: "Watch Menu, Order & Pay",
-      icon: GlassWater,
-      color: "bg-emerald-500",
-      hover: "hover:bg-emerald-600",
-      shadow: "shadow-emerald-200",
-    },
-    {
-      id: "staff",
-      title: "Staff",
-      desc: "Manage tables, place orders at POS",
-      icon: Store,
-      color: "bg-amber-500",
-      hover: "hover:bg-amber-600",
-      shadow: "shadow-amber-200",
-    },
-    {
-      id: "chef",
-      title: "Chef",
-      desc: "Smart Kitchen Display System (KDS)",
-      icon: ChefHat,
-      color: "bg-rose-500",
-      hover: "hover:bg-rose-600",
-      shadow: "shadow-rose-200",
-    },
-    {
-      id: "admin",
-      title: "Admin",
-      desc: "Manage & Generate Sales Reports",
-      icon: ShieldCheck,
-      color: "bg-indigo-600",
-      hover: "hover:bg-indigo-700",
-      shadow: "shadow-indigo-200",
-    },
+    { id: "customer", title: "Customer", desc: "Watch Menu, Order & Pay", icon: GlassWater, color: "bg-emerald-500", hover: "hover:bg-emerald-600", shadow: "shadow-emerald-200" },
+    { id: "staff", title: "Staff", desc: "Manage tables, place orders at POS", icon: Store, color: "bg-amber-500", hover: "hover:bg-amber-600", shadow: "shadow-amber-200" },
+    { id: "chef", title: "Chef", desc: "Smart Kitchen Display System (KDS)", icon: ChefHat, color: "bg-rose-500", hover: "hover:bg-rose-600", shadow: "shadow-rose-200" },
+    { id: "admin", title: "Admin", desc: "Manage & Generate Sales Reports", icon: ShieldCheck, color: "bg-indigo-600", hover: "hover:bg-indigo-700", shadow: "shadow-indigo-200" },
   ];
 
   return (
@@ -76,9 +42,9 @@ export default function LandingPage() {
             Restaurant
           </div>
           <h1 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter leading-none">
-            Demo Portal <br />
+            Restaurant <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-indigo-600 italic">
-              Smart Solution
+              System
             </span>
           </h1>
           <p className="text-lg text-slate-500 font-medium max-w-xl mx-auto">
@@ -126,7 +92,7 @@ export default function LandingPage() {
               <UserCircle2 className="text-indigo-500 w-5 h-5" />
               <span className="text-sm font-bold text-slate-700">
                 Logged in as:{" "}
-                <span className="text-indigo-600">{user.email}</span>
+                <span className="text-indigo-600">{user.role}</span>
               </span>
               <Badge className="bg-indigo-600 uppercase text-[9px] font-black">
                 {user.role}
