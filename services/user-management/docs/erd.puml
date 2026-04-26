@@ -1,0 +1,363 @@
+@startuml
+top to bottom direction
+scale 0.75
+
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam nodesep 90
+skinparam ranksep 110
+skinparam class {
+  BackgroundColor #FFF4DD
+  BorderColor #D7A64A
+  HeaderBackgroundColor #F3D59A
+  FontSize 10
+}
+
+hide methods
+
+class Staff {
+  staff_id
+  full_name
+  email
+  phone
+  username
+  password_hash
+  status
+}
+
+class Server {
+  assigned_zone
+}
+
+class KitchenStaff {
+  station_skill
+}
+
+class Manager {
+  admin_level
+}
+
+class Cashier {
+  cashier_counter
+}
+
+Staff <|-- Server
+Staff <|-- KitchenStaff
+Staff <|-- Manager
+Staff <|-- Cashier
+
+Server -[hidden]right- KitchenStaff
+KitchenStaff -[hidden]right- Manager
+Manager -[hidden]right- Cashier
+
+class Role {
+  role_id
+  role_name
+  description
+}
+
+class Permission {
+  permission_id
+  permission_name
+  description
+}
+
+class StaffRole {
+  staff_id
+  role_id
+}
+
+class RolePermission {
+  role_id
+  permission_id
+}
+
+Staff "1" -- "0..*" StaffRole
+Role "1" -- "0..*" StaffRole
+Role "1" -- "0..*" RolePermission
+Permission "1" -- "0..*" RolePermission
+
+class Customer {
+  customer_id
+  full_name
+  phone
+  email
+}
+
+class CustomerAddress {
+  address_id
+  street_no
+  street_name
+  ward
+  district
+  city
+  country
+}
+
+class CustomerAllergy {
+  customer_id
+  allergy_name
+}
+
+Customer "1" *-- "0..*" CustomerAddress
+Customer "1" *-- "0..*" CustomerAllergy
+
+class RestaurantTable {
+  table_id
+  table_number
+  capacity
+  table_status
+  remaining_service_time
+}
+
+class Reservation {
+  reservation_id
+  reservation_time
+  expected_duration
+  reservation_status
+  billing_status
+}
+
+class ReservationTable {
+  reservation_id
+  table_id
+  assigned_at
+}
+
+Customer "1" -- "0..*" Reservation
+Server "0..1" -- "0..*" Reservation
+Reservation "1" *-- "1..*" ReservationTable
+RestaurantTable "1" -- "0..*" ReservationTable
+
+class MenuCategory {
+  category_id
+  category_name
+  display_order
+}
+
+class MenuItem {
+  item_id
+  item_name
+  description
+  price
+  availability_status
+  estimated_prep_time
+}
+
+class Combo {
+  combo_id
+  combo_name
+  combo_price
+  start_date
+  end_date
+  status
+}
+
+class ComboItem {
+  combo_id
+  item_id
+  quantity
+}
+
+class Ingredient {
+  ingredient_id
+  ingredient_name
+  unit
+  current_quantity
+  reorder_threshold
+}
+
+class RecipeIngredient {
+  item_id
+  ingredient_id
+  required_quantity
+}
+
+class MenuItemAllergyNote {
+  item_id
+  allergy_note
+}
+
+MenuCategory "1" -- "0..*" MenuItem
+Combo "1" *-- "1..*" ComboItem
+MenuItem "1" -- "0..*" ComboItem
+MenuItem "1" *-- "0..*" MenuItemAllergyNote
+MenuItem "1" -- "0..*" RecipeIngredient
+Ingredient "1" -- "0..*" RecipeIngredient
+
+class FoodOrder {
+  order_id
+  table_id
+  reservation_id
+  order_time
+  order_status
+  special_instruction
+}
+
+class OrderItem {
+  order_item_id
+  quantity
+  note
+  item_status
+}
+
+class OrderItemCustomization {
+  order_item_id
+  customization_no
+  customization_text
+  extra_price
+}
+
+class KitchenStation {
+  station_id
+  station_name
+  description
+}
+
+class PreparationAssignment {
+  order_item_id
+  station_id
+  kitchen_staff_id
+  assigned_at
+  priority_level
+  prep_status
+}
+
+class KitchenTask {
+  task_id
+  deadline_time
+  started_at
+  completed_at
+  task_status
+}
+
+Customer "0..1" -- "0..*" FoodOrder
+Server "1" -- "0..*" FoodOrder
+RestaurantTable "0..1" -- "0..*" FoodOrder
+Reservation "0..1" -- "0..*" FoodOrder
+
+FoodOrder "1" *-- "1..*" OrderItem
+MenuItem "1" -- "0..*" OrderItem
+OrderItem "1" *-- "0..*" OrderItemCustomization
+
+' Kitchen layout hints
+KitchenStation -[hidden]down- PreparationAssignment
+PreparationAssignment -[hidden]right- KitchenTask
+KitchenStation -[hidden]right- KitchenStaff
+KitchenStaff -[hidden]down- KitchenTask
+
+OrderItem "1" -right- "0..*" PreparationAssignment
+KitchenStation "1" -down- "0..*" PreparationAssignment
+KitchenStaff "1" -down- "0..*" PreparationAssignment
+
+OrderItem "1" -right- "0..*" KitchenTask
+KitchenStation "0..1" -down- "0..*" KitchenTask
+KitchenStaff "0..1" -down- "0..*" KitchenTask
+
+class Promotion {
+  promotion_id
+  promotion_name
+  discount_type
+  discount_value
+  start_date
+  end_date
+  status
+}
+
+class Bill {
+  bill_id
+  cashier_id
+  promotion_id
+  subtotal
+  discount_amount
+  service_fee
+  tax_amount
+  total_amount
+  bill_status
+}
+
+class Payment {
+  payment_id
+  payment_method
+  amount
+  paid_at
+  payment_status
+}
+
+class BillSplit {
+  split_id
+  payer_name
+  split_amount
+  split_status
+}
+
+class Tip {
+  tip_id
+  amount
+  tip_time
+}
+
+FoodOrder "1" -- "0..1" Bill
+Cashier "1" -- "0..*" Bill
+Promotion "0..1" -- "0..*" Bill
+
+Bill "1" *-- "0..*" Payment
+Bill "1" *-- "0..*" BillSplit
+Bill "1" *-- "0..*" Tip
+
+class StockAlert {
+  alert_id
+  alert_time
+  alert_status
+}
+
+class InventoryTransaction {
+  transaction_id
+  transaction_type
+  quantity_change
+  transaction_time
+  reason
+}
+
+class Notification {
+  notification_id
+  notification_type
+  message
+  sent_at
+  read_status
+}
+
+class AuditLog {
+  log_id
+  action_type
+  target_table
+  target_id
+  action_time
+  description
+}
+
+class AnalyticsReport {
+  report_id
+  report_type
+  start_date
+  end_date
+  generated_at
+  export_format
+}
+
+Ingredient "1" -- "0..*" StockAlert
+Manager "1" -- "0..*" StockAlert
+
+Ingredient "1" -- "0..*" InventoryTransaction
+Staff "1" -- "0..*" InventoryTransaction
+OrderItem "0..1" -- "0..*" InventoryTransaction
+
+Staff "0..1" -- "0..*" Notification
+FoodOrder "0..1" -- "0..*" Notification
+Ingredient "0..1" -- "0..*" Notification
+
+Staff "1" -- "0..*" AuditLog
+Manager "1" -- "0..*" AnalyticsReport
+
+@enduml

@@ -25,7 +25,7 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('IRMS Authentication API')
     .setDescription('Authentication and user management endpoints for IRMS')
-    .setVersion('1.0')
+    .setVersion('1.0.1')
     .addTag('authentication')
     .addTag('users')
     .addTag('roles')

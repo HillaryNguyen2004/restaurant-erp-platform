@@ -1,0 +1,571 @@
+classDiagram
+direction TB
+
+%% =========================
+%% CONTROLLER INTERFACES
+%% =========================
+
+class IReservationController {
+  +createReservation(dto: CreateReservationDto) ReservationResponseDto
+  +extendReservation(id: UUID, dto: ExtendReservationDto) ReservationResponseDto
+  +cancelReservation(id: UUID) void
+  +checkInReservation(id: UUID) DiningSessionResponseDto
+  +markNoShow(id: UUID) void
+  +getReservation(id: UUID) ReservationResponseDto
+  +getReservationsByDateRange(dto: ReservationCalendarQueryDto) ReservationResponseDto[*]
+}
+
+class IAvailabilityController {
+  +findAvailableTables(dto: FindAvailableTablesDto) TableResponseDto[*]
+  +getWaitTime(dto: GetWaitTimeDto) WaitTimeResponseDto
+}
+
+class ITableStateController {
+  +getTableState(tableId: UUID) TableResponseDto
+  +getAllTableStates() TableResponseDto[*]
+  +markTableAvailable(tableId: UUID) void
+  +markTableOutOfOrder(tableId: UUID) void
+}
+
+class IDiningSessionController {
+  +startSession(dto: StartDiningSessionDto) DiningSessionResponseDto
+  +extendSession(sessionId: UUID, dto: ExtendDiningSessionDto) DiningSessionResponseDto
+  +finishSession(sessionId: UUID) void
+  +getRemainingServiceTime(sessionId: UUID) ServiceTimeResponseDto
+}
+
+%% =========================
+%% CONTROLLER IMPLEMENTATIONS
+%% =========================
+
+class ReservationControllerImpl {
+  -reservationService: IReservationService
+  +createReservation(dto: CreateReservationDto) ReservationResponseDto
+  +extendReservation(id: UUID, dto: ExtendReservationDto) ReservationResponseDto
+  +cancelReservation(id: UUID) void
+  +checkInReservation(id: UUID) DiningSessionResponseDto
+  +markNoShow(id: UUID) void
+  +getReservation(id: UUID) ReservationResponseDto
+  +getReservationsByDateRange(dto: ReservationCalendarQueryDto) ReservationResponseDto[*]
+}
+
+class AvailabilityControllerImpl {
+  -availabilityService: IAvailabilityService
+  +findAvailableTables(dto: FindAvailableTablesDto) TableResponseDto[*]
+  +getWaitTime(dto: GetWaitTimeDto) WaitTimeResponseDto
+}
+
+class TableStateControllerImpl {
+  -tableStateService: ITableStateService
+  +getTableState(tableId: UUID) TableResponseDto
+  +getAllTableStates() TableResponseDto[*]
+  +markTableAvailable(tableId: UUID) void
+  +markTableOutOfOrder(tableId: UUID) void
+}
+
+class DiningSessionControllerImpl {
+  -diningSessionService: IDiningSessionService
+  +startSession(dto: StartDiningSessionDto) DiningSessionResponseDto
+  +extendSession(sessionId: UUID, dto: ExtendDiningSessionDto) DiningSessionResponseDto
+  +finishSession(sessionId: UUID) void
+  +getRemainingServiceTime(sessionId: UUID) ServiceTimeResponseDto
+}
+
+%% =========================
+%% SERVICE INTERFACES
+%% =========================
+
+class IReservationService {
+  +createReservation(dto: CreateReservationDto) ReservationResponseDto
+  +extendReservation(id: UUID, dto: ExtendReservationDto) ReservationResponseDto
+  +cancelReservation(id: UUID) void
+  +checkInReservation(id: UUID) DiningSessionResponseDto
+  +markNoShow(id: UUID) void
+  +getReservation(id: UUID) ReservationResponseDto
+  +getReservationsByDateRange(dto: ReservationCalendarQueryDto) ReservationResponseDto[*]
+}
+
+class IAvailabilityService {
+  +findAvailableTables(dto: FindAvailableTablesDto) TableResponseDto[*]
+  +getWaitTime(dto: GetWaitTimeDto) WaitTimeResponseDto
+}
+
+class ITableStateService {
+  +getTableState(tableId: UUID) TableResponseDto
+  +getAllTableStates() TableResponseDto[*]
+  +markTableAvailable(tableId: UUID) void
+  +markTableReserved(tableId: UUID) void
+  +markTableOccupied(tableId: UUID) void
+  +markTableOutOfOrder(tableId: UUID) void
+}
+
+class IDiningSessionService {
+  +startSession(dto: StartDiningSessionDto) DiningSessionResponseDto
+  +startFromReservation(reservationId: UUID) DiningSessionResponseDto
+  +extendSession(sessionId: UUID, dto: ExtendDiningSessionDto) DiningSessionResponseDto
+  +finishSession(sessionId: UUID) void
+  +getRemainingServiceTime(sessionId: UUID) ServiceTimeResponseDto
+}
+
+%% =========================
+%% APPLICATION SERVICES
+%% =========================
+
+class ReservationServiceImpl {
+  -reservationRepo: IReservationRepository
+  -tableRepo: ITableRepository
+  -validator: ReservationValidator
+  -assignmentStrategy: ITableAssignmentStrategy
+  -checkInCoordinator: ReservationCheckInCoordinator
+  -eventPublisher: IReservationEventPublisher
+  -mapper: ReservationMapper
+  +createReservation(dto: CreateReservationDto) ReservationResponseDto
+  +extendReservation(id: UUID, dto: ExtendReservationDto) ReservationResponseDto
+  +cancelReservation(id: UUID) void
+  +checkInReservation(id: UUID) DiningSessionResponseDto
+  +markNoShow(id: UUID) void
+  +getReservation(id: UUID) ReservationResponseDto
+  +getReservationsByDateRange(dto: ReservationCalendarQueryDto) ReservationResponseDto[*]
+}
+
+class AvailabilityServiceImpl {
+  -reservationRepo: IReservationRepository
+  -tableRepo: ITableRepository
+  -availabilityChecker: AvailabilityChecker
+  -waitTimeEstimator: WaitTimeEstimator
+  -tableMapper: TableMapper
+  +findAvailableTables(dto: FindAvailableTablesDto) TableResponseDto[*]
+  +getWaitTime(dto: GetWaitTimeDto) WaitTimeResponseDto
+}
+
+class TableStateServiceImpl {
+  -tableRepo: ITableRepository
+  -eventPublisher: ITableStateEventPublisher
+  -mapper: TableMapper
+  +getTableState(tableId: UUID) TableResponseDto
+  +getAllTableStates() TableResponseDto[*]
+  +markTableAvailable(tableId: UUID) void
+  +markTableReserved(tableId: UUID) void
+  +markTableOccupied(tableId: UUID) void
+  +markTableOutOfOrder(tableId: UUID) void
+}
+
+class DiningSessionServiceImpl {
+  -sessionRepo: IDiningSessionRepository
+  -tableRepo: ITableRepository
+  -serviceTimeTracker: ServiceTimeTracker
+  -eventPublisher: IDiningSessionEventPublisher
+  -mapper: DiningSessionMapper
+  +startSession(dto: StartDiningSessionDto) DiningSessionResponseDto
+  +startFromReservation(reservationId: UUID) DiningSessionResponseDto
+  +extendSession(sessionId: UUID, dto: ExtendDiningSessionDto) DiningSessionResponseDto
+  +finishSession(sessionId: UUID) void
+  +getRemainingServiceTime(sessionId: UUID) ServiceTimeResponseDto
+}
+
+%% =========================
+%% DOMAIN SERVICES / STRATEGIES / COORDINATORS / MAPPERS
+%% =========================
+
+class ReservationValidator {
+  +validateCreate(dto: CreateReservationDto) void
+  +validateExtension(reservation: Reservation, newSlot: TimeSlot) void
+  +validateCancellation(reservation: Reservation) void
+  +validateCheckIn(reservation: Reservation) void
+}
+
+class AvailabilityChecker {
+  +findAvailableTables(timeSlot: TimeSlot, partySize: int, reservations: Reservation[*], tables: RestaurantTable[*]) RestaurantTable[*]
+  +isTableAvailable(table: RestaurantTable, timeSlot: TimeSlot, reservations: Reservation[*]) bool
+}
+
+class WaitTimeEstimator {
+  +estimate(partySize: int, currentTime: DateTime, reservations: Reservation[*], sessions: DiningSession[*], tables: RestaurantTable[*]) Duration
+}
+
+class ServiceTimeTracker {
+  +calculateRemaining(session: DiningSession, currentTime: DateTime) Duration
+  +isOvertime(session: DiningSession, currentTime: DateTime) bool
+}
+
+class ITableAssignmentStrategy {
+  +selectTable(candidateTables: RestaurantTable[*], partySize: int) RestaurantTable
+}
+
+class BestFitTableAssignmentStrategy {
+  +selectTable(candidateTables: RestaurantTable[*], partySize: int) RestaurantTable
+}
+
+class ReservationCheckInCoordinator {
+  -reservationRepo: IReservationRepository
+  -tableRepo: ITableRepository
+  -sessionRepo: IDiningSessionRepository
+  -eventPublisher: IReservationEventPublisher
+  +checkIn(reservationId: UUID) DiningSession
+}
+
+class ReservationMapper {
+  +toResponseDto(reservation: Reservation, table: RestaurantTable) ReservationResponseDto
+}
+
+class TableMapper {
+  +toResponseDto(table: RestaurantTable) TableResponseDto
+}
+
+class DiningSessionMapper {
+  +toResponseDto(session: DiningSession, table: RestaurantTable) DiningSessionResponseDto
+}
+
+%% =========================
+%% OUTBOUND PORTS
+%% =========================
+
+class IReservationRepository {
+  +save(reservation: Reservation) Reservation
+  +findById(id: UUID) Reservation
+  +findOverlapping(timeSlot: TimeSlot) Reservation[*]
+  +findByDateRange(start: DateTime, end: DateTime) Reservation[*]
+}
+
+class ITableRepository {
+  +save(table: RestaurantTable) RestaurantTable
+  +findById(id: UUID) RestaurantTable
+  +findAll() RestaurantTable[*]
+  +findByMinimumCapacity(capacity: int) RestaurantTable[*]
+}
+
+class IDiningSessionRepository {
+  +save(session: DiningSession) DiningSession
+  +findById(id: UUID) DiningSession
+  +findActiveByTableId(tableId: UUID) DiningSession
+  +findActiveSessions() DiningSession[*]
+}
+
+class IReservationEventPublisher {
+  +publishCreated(reservation: Reservation) void
+  +publishExtended(reservation: Reservation) void
+  +publishCancelled(reservation: Reservation) void
+  +publishCheckedIn(reservation: Reservation) void
+  +publishNoShow(reservation: Reservation) void
+}
+
+class ITableStateEventPublisher {
+  +publishTableAvailable(table: RestaurantTable) void
+  +publishTableReserved(table: RestaurantTable) void
+  +publishTableOccupied(table: RestaurantTable) void
+  +publishTableOutOfOrder(table: RestaurantTable) void
+}
+
+class IDiningSessionEventPublisher {
+  +publishSessionStarted(session: DiningSession) void
+  +publishSessionExtended(session: DiningSession) void
+  +publishSessionFinished(session: DiningSession) void
+}
+
+%% =========================
+%% ADAPTER IMPLEMENTATIONS
+%% =========================
+
+class ReservationRepositoryImpl {
+  +save(reservation: Reservation) Reservation
+  +findById(id: UUID) Reservation
+  +findOverlapping(timeSlot: TimeSlot) Reservation[*]
+  +findByDateRange(start: DateTime, end: DateTime) Reservation[*]
+}
+
+class TableRepositoryImpl {
+  +save(table: RestaurantTable) RestaurantTable
+  +findById(id: UUID) RestaurantTable
+  +findAll() RestaurantTable[*]
+  +findByMinimumCapacity(capacity: int) RestaurantTable[*]
+}
+
+class DiningSessionRepositoryImpl {
+  +save(session: DiningSession) DiningSession
+  +findById(id: UUID) DiningSession
+  +findActiveByTableId(tableId: UUID) DiningSession
+  +findActiveSessions() DiningSession[*]
+}
+
+class ReservationEventPublisherImpl {
+  +publishCreated(reservation: Reservation) void
+  +publishExtended(reservation: Reservation) void
+  +publishCancelled(reservation: Reservation) void
+  +publishCheckedIn(reservation: Reservation) void
+  +publishNoShow(reservation: Reservation) void
+}
+
+class TableStateEventPublisherImpl {
+  +publishTableAvailable(table: RestaurantTable) void
+  +publishTableReserved(table: RestaurantTable) void
+  +publishTableOccupied(table: RestaurantTable) void
+  +publishTableOutOfOrder(table: RestaurantTable) void
+}
+
+class DiningSessionEventPublisherImpl {
+  +publishSessionStarted(session: DiningSession) void
+  +publishSessionExtended(session: DiningSession) void
+  +publishSessionFinished(session: DiningSession) void
+}
+
+%% =========================
+%% DOMAIN
+%% =========================
+
+class Reservation {
+  +reservationId: UUID
+  +customerName: String
+  +contactNumber: String
+  +partySize: int
+  +timeSlot: TimeSlot
+  +status: ReservationStatus
+  +tableId: UUID
+  +notes: String
+  +extend(newSlot: TimeSlot) void
+  +cancel() void
+  +checkIn() void
+  +markNoShow() void
+  +isActive() bool
+}
+
+class RestaurantTable {
+  +tableId: UUID
+  +tableNumber: String
+  +capacity: int
+  +status: TableStatus
+  +zone: String
+  +canFit(partySize: int) bool
+  +markAvailable() void
+  +markReserved() void
+  +markOccupied() void
+  +markOutOfOrder() void
+}
+
+class DiningSession {
+  +sessionId: UUID
+  +tableId: UUID
+  +reservationId: UUID
+  +startedAt: DateTime
+  +expectedEndAt: DateTime
+  +actualEndAt: DateTime
+  +status: DiningSessionStatus
+  +billingStatus: TableBillingStatus
+  +extend(newExpectedEndAt: DateTime) void
+  +finish() void
+  +getRemainingTime(currentTime: DateTime) Duration
+}
+
+class TimeSlot {
+  +start: DateTime
+  +end: DateTime
+  +overlaps(other: TimeSlot) bool
+  +extendTo(newEnd: DateTime) TimeSlot
+}
+
+class ReservationStatus {
+  PENDING
+  CONFIRMED
+  ARRIVED
+  CANCELLED
+  NO_SHOW
+  COMPLETED
+}
+
+class TableStatus {
+  FREE
+  RESERVED
+  OCCUPIED
+  OUT_OF_ORDER
+}
+
+class DiningSessionStatus {
+  ACTIVE
+  EXTENDED
+  FINISHED
+}
+
+class TableBillingStatus {
+  NOT_READY
+  READY_TO_PAY
+  PAID
+}
+
+%% =========================
+%% DTOs
+%% =========================
+
+class CreateReservationDto {
+  +customerName: String
+  +contactNumber: String
+  +partySize: int
+  +startTime: DateTime
+  +endTime: DateTime
+  +notes: String
+}
+
+class ExtendReservationDto {
+  +newEndTime: DateTime
+}
+
+class ReservationCalendarQueryDto {
+  +startDate: DateTime
+  +endDate: DateTime
+}
+
+class FindAvailableTablesDto {
+  +partySize: int
+  +startTime: DateTime
+  +endTime: DateTime
+}
+
+class GetWaitTimeDto {
+  +partySize: int
+}
+
+class StartDiningSessionDto {
+  +tableId: UUID
+  +reservationId: UUID
+  +expectedEndAt: DateTime
+}
+
+class ExtendDiningSessionDto {
+  +newExpectedEndAt: DateTime
+}
+
+class ReservationResponseDto {
+  +reservationId: UUID
+  +customerName: String
+  +partySize: int
+  +startTime: DateTime
+  +endTime: DateTime
+  +status: ReservationStatus
+  +tableNumber: String
+}
+
+class TableResponseDto {
+  +tableId: UUID
+  +tableNumber: String
+  +capacity: int
+  +status: TableStatus
+  +zone: String
+}
+
+class DiningSessionResponseDto {
+  +sessionId: UUID
+  +tableId: UUID
+  +tableNumber: String
+  +startedAt: DateTime
+  +expectedEndAt: DateTime
+  +remainingMinutes: int
+  +status: DiningSessionStatus
+  +billingStatus: TableBillingStatus
+}
+
+class WaitTimeResponseDto {
+  +estimatedMinutes: int
+}
+
+class ServiceTimeResponseDto {
+  +remainingMinutes: int
+  +isOvertime: bool
+}
+
+%% =========================
+%% REALIZATION
+%% =========================
+
+IReservationController <|.. ReservationControllerImpl
+IAvailabilityController <|.. AvailabilityControllerImpl
+ITableStateController <|.. TableStateControllerImpl
+IDiningSessionController <|.. DiningSessionControllerImpl
+
+IReservationService <|.. ReservationServiceImpl
+IAvailabilityService <|.. AvailabilityServiceImpl
+ITableStateService <|.. TableStateServiceImpl
+IDiningSessionService <|.. DiningSessionServiceImpl
+
+ITableAssignmentStrategy <|.. BestFitTableAssignmentStrategy
+
+IReservationRepository <|.. ReservationRepositoryImpl
+ITableRepository <|.. TableRepositoryImpl
+IDiningSessionRepository <|.. DiningSessionRepositoryImpl
+
+IReservationEventPublisher <|.. ReservationEventPublisherImpl
+ITableStateEventPublisher <|.. TableStateEventPublisherImpl
+IDiningSessionEventPublisher <|.. DiningSessionEventPublisherImpl
+
+%% =========================
+%% CONTROLLER -> SERVICE
+%% =========================
+
+ReservationControllerImpl --> IReservationService
+AvailabilityControllerImpl --> IAvailabilityService
+TableStateControllerImpl --> ITableStateService
+DiningSessionControllerImpl --> IDiningSessionService
+
+%% =========================
+%% SERVICE -> PORTS / HELPERS
+%% =========================
+
+ReservationServiceImpl --> IReservationRepository
+ReservationServiceImpl --> ITableRepository
+ReservationServiceImpl --> IReservationEventPublisher
+ReservationServiceImpl --> ITableAssignmentStrategy
+ReservationServiceImpl --> ReservationValidator
+ReservationServiceImpl --> ReservationCheckInCoordinator
+ReservationServiceImpl --> ReservationMapper
+
+AvailabilityServiceImpl --> IReservationRepository
+AvailabilityServiceImpl --> ITableRepository
+AvailabilityServiceImpl --> AvailabilityChecker
+AvailabilityServiceImpl --> WaitTimeEstimator
+AvailabilityServiceImpl --> TableMapper
+
+TableStateServiceImpl --> ITableRepository
+TableStateServiceImpl --> ITableStateEventPublisher
+TableStateServiceImpl --> TableMapper
+
+DiningSessionServiceImpl --> IDiningSessionRepository
+DiningSessionServiceImpl --> ITableRepository
+DiningSessionServiceImpl --> ServiceTimeTracker
+DiningSessionServiceImpl --> IDiningSessionEventPublisher
+DiningSessionServiceImpl --> DiningSessionMapper
+
+ReservationCheckInCoordinator --> IReservationRepository
+ReservationCheckInCoordinator --> ITableRepository
+ReservationCheckInCoordinator --> IDiningSessionRepository
+ReservationCheckInCoordinator --> IReservationEventPublisher
+
+%% =========================
+%% DOMAIN RELATIONSHIPS
+%% =========================
+
+Reservation --> TimeSlot
+Reservation --> ReservationStatus
+RestaurantTable --> TableStatus
+DiningSession --> DiningSessionStatus
+DiningSession --> TableBillingStatus
+DiningSession --> RestaurantTable
+DiningSession --> Reservation
+
+%% =========================
+%% DTO DEPENDENCIES
+%% =========================
+
+IReservationController --> CreateReservationDto
+IReservationController --> ExtendReservationDto
+IReservationController --> ReservationCalendarQueryDto
+IReservationController --> ReservationResponseDto
+IReservationController --> DiningSessionResponseDto
+
+IAvailabilityController --> FindAvailableTablesDto
+IAvailabilityController --> GetWaitTimeDto
+IAvailabilityController --> TableResponseDto
+IAvailabilityController --> WaitTimeResponseDto
+
+ITableStateController --> TableResponseDto
+
+IDiningSessionController --> StartDiningSessionDto
+IDiningSessionController --> ExtendDiningSessionDto
+IDiningSessionController --> DiningSessionResponseDto
+IDiningSessionController --> ServiceTimeResponseDto

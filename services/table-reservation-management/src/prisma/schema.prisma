@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Reservation {
+  reservationId String   @id @default(uuid()) @map("reservation_id")
+  customerName  String   @map("customer_name")
+  contactNumber String   @map("contact_number")
+  partySize     Int      @map("party_size")
+  startTime     DateTime @map("start_time")
+  endTime       DateTime @map("end_time")
+  status        String
+  tableId       String   @map("table_id")
+  notes         String?
+
+  table RestaurantTable @relation(fields: [tableId], references: [tableId])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("reservations")
+}
+
+model RestaurantTable {
+  tableId     String @id @default(uuid()) @map("table_id")
+  tableNumber String @unique @map("table_number")
+  capacity    Int
+  status      String
+  zone        String
+
+  reservations   Reservation[]
+  diningSessions DiningSession[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("restaurant_tables")
+}
+
+model DiningSession {
+  sessionId     String    @id @default(uuid()) @map("session_id")
+  tableId       String    @map("table_id")
+  reservationId String?   @map("reservation_id")
+  startedAt     DateTime  @map("started_at")
+  expectedEndAt DateTime  @map("expected_end_at")
+  actualEndAt   DateTime? @map("actual_end_at")
+  status        String
+  billingStatus String    @map("billing_status")
+
+  table RestaurantTable @relation(fields: [tableId], references: [tableId])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("dining_sessions")
+}
