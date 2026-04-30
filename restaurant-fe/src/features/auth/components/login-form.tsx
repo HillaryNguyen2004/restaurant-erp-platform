@@ -11,10 +11,12 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { LoginInput, LoginSchema } from "../config/auth.config";
+import { useLogin } from "../data-access/auth.queries";
 
 export function LoginForm() {
     const { login } = useAuth();
     const router = useRouter();
+    const loginMutation = useLogin();
 
     const {
         register,
@@ -28,21 +30,28 @@ export function LoginForm() {
         },
     });
 
-    const onSubmit = (data: LoginInput) => {
-        // Mock login based on email prefix or just default to admin for demo
-        let role: Role = "admin";
-        if (data.email.includes("staff")) role = "staff";
-        else if (data.email.includes("chef")) role = "chef";
-        else if (data.email.includes("customer")) role = "customer";
+    const onSubmit = async (data: LoginInput) => {
+        try {
+            const result = await loginMutation.mutateAsync(data);
+            
+            // Assuming result contains token and user info
+            // For now, if result is empty (placeholder), we mock it like before but with real role if possible
+            const token = result?.accessToken || "mock-token";
+            const user = result?.user || { 
+                id: "1", 
+                role: data.email.includes("staff") ? "staff" : 
+                      data.email.includes("chef") ? "chef" : 
+                      data.email.includes("customer") ? "customer" : "admin" 
+            };
 
-        login(role);
-        toast.success(`Đăng nhập thành công với vai trò ${role}`);
+            login(token, user);
+            toast.success(`Đăng nhập thành công!`);
 
-        // Redirect based on role
-        if (role === "admin") router.push("/admin");
-        else if (role === "chef") router.push("/chef");
-        else if (role === "staff") router.push("/staff");
-        else router.push("/customer");
+            // Redirect based on role
+            router.push(`/${user.role}`);
+        } catch (error) {
+            toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+        }
     };
 
     return (
@@ -56,8 +65,9 @@ export function LoginForm() {
             <CardContent>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <Field>
-                        <FieldLabel>Email</FieldLabel>
+                        <FieldLabel htmlFor="email">Email</FieldLabel>
                         <Input
+                            id="email"
                             placeholder="admin@example.com"
                             {...register("email")}
                             data-invalid={!!errors.email}
@@ -66,8 +76,9 @@ export function LoginForm() {
                     </Field>
 
                     <Field>
-                        <FieldLabel>Mật khẩu</FieldLabel>
+                        <FieldLabel htmlFor="password">Mật khẩu</FieldLabel>
                         <Input
+                            id="password"
                             type="password"
                             placeholder="••••••••"
                             {...register("password")}
@@ -84,8 +95,13 @@ export function LoginForm() {
                             Quên mật khẩu?
                         </Link>
                     </div>
-                    <Button type="submit" className="w-full font-semibold shadow-md active:scale-95 transition-transform" size="lg">
-                        Đăng nhập
+                    <Button 
+                        type="submit" 
+                        className="w-full font-semibold shadow-md active:scale-95 transition-transform" 
+                        size="lg"
+                        disabled={loginMutation.isPending}
+                    >
+                        {loginMutation.isPending ? "Đang xử lý..." : "Đăng nhập"}
                     </Button>
                 </form>
                 <div className="mt-6 text-center text-sm">

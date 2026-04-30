@@ -1,10 +1,10 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { StaffOrder } from "@/app/types/staff.types";
+import type { KitchenTicket } from "@/features/kds/config/kds.config";
+import { useQuery } from "@tanstack/react-query";
 
-async function getStaffOrders(): Promise<StaffOrder[]> {
+async function getStaffOrders(): Promise<KitchenTicket[]> {
   const res = await fetch("/api/staff/orders");
   if (!res.ok) throw new Error("Error fetching staff orders");
   return res.json();
@@ -52,7 +52,7 @@ export default function StaffOrdersPage() {
             <CardHeader className="pb-2">
               <CardTitle className="flex justify-between text-sm">
                 <span>
-                  {order.id} — Bàn {order.tableNumber}
+                  {order.id} — Bàn {order.station}
                 </span>
                 <Badge className={statusColor[order.status]}>
                   {statusLabel[order.status]}
@@ -69,15 +69,10 @@ export default function StaffOrdersPage() {
                   className="flex justify-between text-sm"
                 >
                   <span>
-                    {item.name} x{item.qty}
+                    {item.name} x{item.quantity}
                   </span>
-                  <span>{(item.price * item.qty).toLocaleString()}đ</span>
                 </div>
               ))}
-              <div className="border-t pt-2 flex justify-between font-semibold text-sm">
-                <span>Total</span>
-                <span>{order.total.toLocaleString()}đ</span>
-              </div>
             </CardContent>
           </Card>
         ))

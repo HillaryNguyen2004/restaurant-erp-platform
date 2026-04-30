@@ -1,22 +1,20 @@
 import { z } from "zod";
 
 export const IngredientSchema = z.object({
-    id: z.string().uuid(),
-    name: z.string(),
+    id: z.string().optional(),
+    name: z.string().min(1),
     unit: z.string(),
-    currentStock: z.number(),
-    minThreshold: z.number(),
-    costPerUnit: z.number(),
-});
-
-export const StockLogSchema = z.object({
-    ingredientId: z.string(),
-    type: z.enum(["usage", "adjustment", "spoilage", "restock"]),
     quantity: z.number(),
-    reason: z.string().optional(),
-    loggedBy: z.string(),
-    timestamp: z.date().default(new Date()),
+    minThreshold: z.number(),
 });
 
 export type Ingredient = z.infer<typeof IngredientSchema>;
-export type StockLog = z.infer<typeof StockLogSchema>;
+
+export const WasteLogSchema = z.object({
+    ingredientId: z.string(),
+    quantity: z.number(),
+    reason: z.string(),
+    loggedBy: z.string(),
+});
+
+export type WasteLogInput = z.infer<typeof WasteLogSchema>;

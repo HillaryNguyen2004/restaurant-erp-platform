@@ -1,12 +1,12 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { logout as logoutAction } from "@/app/actions/auth";
 
 export type Role = "customer" | "staff" | "chef" | "admin";
 
 interface User { id: string; role: Role; }
 interface AuthContextType {
     user: User | null;
+    login: (token: string, user: User) => void;
     logout: () => void;
     isLoading: boolean;
 }
@@ -18,14 +18,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetch("/api/auth/session")
-            .then(r => r.json())
-            .then(data => setUser(data?.user ?? null))
-            .finally(() => setIsLoading(false));
+        const storedUser = localStorage.getItem("user");
+        const token = localStorage.getItem("token");
+        if (storedUser && token) {
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch (e) {
+                console.error("Failed to parse stored user", e);
+            }
+        }
+        setIsLoading(false);
     }, []);
 
+    const login = (token: string, user: User) => {
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+        setUser(user);
+    };
+
+    const logout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setUser(null);
+        window.location.href = "/auth/login";
+    };
+
     return (
-        <AuthContext.Provider value={{ user, logout: logoutAction, isLoading }}>
+        <AuthContext.Provider value={{ user, login, logout, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

@@ -11,9 +11,11 @@ import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { RegisterInput, RegisterSchema } from "../config/auth.config";
+import { useRegister } from "../data-access/auth.queries";
 
 export function RegisterForm() {
     const router = useRouter();
+    const registerMutation = useRegister();
 
     const {
         register,
@@ -30,9 +32,14 @@ export function RegisterForm() {
         },
     });
 
-    const onSubmit = (data: RegisterInput) => {
-        toast.success("Đăng ký thành công! Vui lòng kiểm tra email để xác thực.");
-        router.push("/auth/login");
+    const onSubmit = async (data: RegisterInput) => {
+        try {
+            await registerMutation.mutateAsync(data);
+            toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
+            router.push("/auth/login");
+        } catch (error) {
+            toast.error("Đăng ký thất bại. Vui lòng thử lại.");
+        }
     };
 
     return (
@@ -101,8 +108,13 @@ export function RegisterForm() {
                         <FieldError errors={[errors.role]} />
                     </Field>
 
-                    <Button type="submit" className="w-full font-semibold shadow-md active:scale-95 transition-transform mt-2" size="lg">
-                        Đăng ký
+                    <Button 
+                        type="submit" 
+                        className="w-full font-semibold shadow-md active:scale-95 transition-transform mt-2" 
+                        size="lg"
+                        disabled={registerMutation.isPending}
+                    >
+                        {registerMutation.isPending ? "Đang xử lý..." : "Đăng ký"}
                     </Button>
                 </form>
                 <div className="mt-6 text-center text-sm">

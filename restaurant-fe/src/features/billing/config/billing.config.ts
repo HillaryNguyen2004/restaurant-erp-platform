@@ -1,23 +1,28 @@
 import { z } from "zod";
 
 export const InvoiceSchema = z.object({
-    id: z.string().uuid(),
+    id: z.string(),
     orderId: z.string(),
+    items: z.array(z.object({
+        name: z.string(),
+        price: z.number(),
+        quantity: z.number(),
+        total: z.number(),
+    })),
     subtotal: z.number(),
     tax: z.number(),
     serviceFee: z.number(),
-    discounts: z.number(),
     total: z.number(),
-    status: z.enum(["unpaid", "partially_paid", "paid", "refunded"]),
+    status: z.enum(["UNPAID", "PAID", "PARTIALLY_PAID", "CANCELLED"]),
 });
+
+export type Invoice = z.infer<typeof InvoiceSchema>;
 
 export const PaymentSchema = z.object({
     invoiceId: z.string(),
     amount: z.number(),
-    method: z.enum(["cash", "card", "qr", "transfer"]),
-    staffId: z.string().optional(),
-    tipAmount: z.number().default(0),
+    method: z.enum(["CASH", "CARD", "QR"]),
+    tip: z.number().optional().default(0),
 });
 
-export type Invoice = z.infer<typeof InvoiceSchema>;
-export type Payment = z.infer<typeof PaymentSchema>;
+export type PaymentInput = z.infer<typeof PaymentSchema>;

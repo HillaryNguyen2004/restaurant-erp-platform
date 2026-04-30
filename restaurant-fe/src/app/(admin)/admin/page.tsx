@@ -1,10 +1,10 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
-import {
-  getAdminStats,
-  getTopItems,
-  getRecentOrders,
-} from "@/app/services/admin.service";
+import { useMenuItems, useCategories } from "@/features/menu/data-access/menu.queries";
+import { useIngredients } from "@/features/inventory/data-access/inventory.queries";
+import { useTables } from "@/features/table/data-access/table.queries";
+import { MenuItemInput } from "@/features/menu/config/menu.config";
+import { Table } from "@/features/table/config/table.config";
+import { Ingredient } from "@/features/inventory/config/inventory.config";
 import {
   DollarSign,
   Utensils,
@@ -16,79 +16,60 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AdminDashboardPage() {
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["admin-stats"],
-    queryFn: getAdminStats,
-    refetchInterval: 30 * 1000, // Tự refetch mỗi 30 giây
-  });
+  const { data: menuItems, isLoading: menuLoading } = useMenuItems();
+  const { data: ingredients, isLoading: inventoryLoading } = useIngredients();
+  const { data: tables, isLoading: tableLoading } = useTables();
+  const { data: categories } = useCategories();
 
-  const { data: topItems, isLoading: itemsLoading } = useQuery({
-    queryKey: ["admin-top-items"],
-    queryFn: getTopItems,
-  });
+  const isLoading = menuLoading || inventoryLoading || tableLoading;
 
-  const { data: recentOrders, isLoading: ordersLoading } = useQuery({
-    queryKey: ["admin-recent-orders"],
-    queryFn: getRecentOrders,
-    refetchInterval: 10 * 1000, // Refetch mỗi 10 giây vì orders thay đổi nhanh
-  });
-
-  // Map data từ API vào format render
-  const statCards = stats
-    ? [
-        {
-          label: "Daily Revenue",
-          value: `${stats.dailyRevenue.toLocaleString()}đ`,
-          change: stats.dailyRevenueChange,
-          icon: DollarSign,
-          color: "text-emerald-500",
-          bg: "bg-emerald-50",
-        },
-
-        {
-          label: "New Orders",
-          value: stats.newOrders,
-          change: stats.newOrdersChange,
-          icon: Utensils,
-          color: "text-indigo-500",
-          bg: "bg-indigo-50",
-        },
-
-        {
-          label: "Customers",
-          value: stats.customers.toLocaleString(),
-          change: stats.customersChange,
-          icon: Users,
-          color: "text-blue-500",
-          bg: "bg-blue-50",
-        },
-
-        {
-          label: "Out of Stock",
-          value: stats.outOfStock,
-          change: stats.outOfStockChange,
-          icon: Package,
-          color: "text-rose-500",
-          bg: "bg-rose-50",
-        },
-      ]
-    : [];
-
-  const statusColor = {
-    completed: "text-emerald-600 bg-emerald-50",
-    pending: "text-amber-600   bg-amber-50",
-    preparing: "text-blue-600    bg-blue-50",
-  };
+  const statCards = [
+    {
+      label: "Total Menu Items",
+      value: menuItems?.length || 0,
+      change: "+2 this week",
+      icon: Utensils,
+      color: "text-indigo-500",
+      bg: "bg-indigo-50",
+    },
+    {
+      label: "Low Stock Items",
+      value: ingredients?.filter((i: Ingredient) => i.quantity <= i.minThreshold).length || 0,
+      change: "-5% from yesterday",
+      icon: Package,
+      color: "text-rose-500",
+      bg: "bg-rose-50",
+    },
+    {
+      label: "Occupied Tables",
+      value: tables?.filter((t: Table) => t.status === "OCCUPIED").length || 0,
+      change: "Normal traffic",
+      icon: Users,
+      color: "text-blue-500",
+      bg: "bg-blue-50",
+    },
+    {
+      label: "Active Categories",
+      value: categories?.length || 0,
+      change: "Stable",
+      icon: DollarSign,
+      color: "text-emerald-500",
+      bg: "bg-emerald-50",
+    },
+  ];
 
   return (
     <div className="p-6 space-y-6">
-      <p className="text-gray-500">
-        Welcome back, here's what's happening today.
-      </p>
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
+        <p className="text-gray-500">
+          Welcome back, here's what's happening today.
+        </p>
+      </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statsLoading
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {isLoading
           ? [...Array(4)].map((_, i) => (
               <div
                 key={i}
@@ -105,9 +86,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <p className="text-sm text-gray-500">{stat.label}</p>
                   <p className="text-2xl font-bold">{stat.value}</p>
-                  <p
-                    className={`text-sm ${stat.change.startsWith("+") ? "text-emerald-500" : "text-rose-500"}`}
-                  >
+                  <p className="text-xs text-gray-400 mt-1 italic">
                     {stat.change}
                   </p>
                 </CardContent>
@@ -116,78 +95,60 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Top Items */}
+        {/* Menu Items Preview */}
         <Card>
           <CardHeader>
-            <CardTitle>Top Items</CardTitle>
+            <CardTitle>Menu Items Preview</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {itemsLoading
+            {menuLoading
               ? [...Array(5)].map((_, i) => (
                   <div
                     key={i}
                     className="h-8 rounded bg-gray-100 animate-pulse"
                   />
                 ))
-              : topItems?.map((item) => (
+              : menuItems?.slice(0, 5).map((item: MenuItemInput) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between"
                   >
-                    <span className="text-sm">{item.name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {item.sales} sales
-                      </span>
-                      {item.trend === "up" ? (
-                        <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                      ) : (
-                        <ArrowDownRight className="w-4 h-4 text-rose-500" />
-                      )}
-                    </div>
+                    <span className="text-sm font-medium">{item.name}</span>
+                    <span className="text-sm text-gray-500">
+                      {item.price.toLocaleString()}đ
+                    </span>
                   </div>
                 ))}
           </CardContent>
         </Card>
 
-        {/* Recent Orders */}
+        {/* Inventory Alerts */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
+            <CardTitle>Inventory Alerts</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {ordersLoading
+            {inventoryLoading
               ? [...Array(5)].map((_, i) => (
                   <div
                     key={i}
                     className="h-8 rounded bg-gray-100 animate-pulse"
                   />
                 ))
-              : recentOrders?.map((order) => (
+              : ingredients?.filter((i: Ingredient) => i.quantity <= i.minThreshold).slice(0, 5).map((ing: Ingredient) => (
                   <div
-                    key={order.id}
+                    key={ing.id}
                     className="flex items-center justify-between"
                   >
-                    <div>
-                      <p className="text-sm font-medium">
-                        {order.id} — {order.table}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {order.time} · {order.items} items
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">
-                        {order.total.toLocaleString()}đ
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${statusColor[order.status]}`}
-                      >
-                        {order.status}
-                      </span>
-                    </div>
+                    <span className="text-sm font-medium text-rose-600">{ing.name}</span>
+                    <span className="text-xs px-2 py-1 bg-rose-50 text-rose-600 rounded-full font-bold">
+                      {ing.quantity} {ing.unit} left
+                    </span>
                   </div>
                 ))}
+            {!inventoryLoading && ingredients?.filter((i: Ingredient) => i.quantity <= i.minThreshold).length === 0 && (
+                <p className="text-sm text-emerald-600 font-medium italic text-center py-4">All stock levels are healthy!</p>
+            )}
           </CardContent>
         </Card>
       </div>

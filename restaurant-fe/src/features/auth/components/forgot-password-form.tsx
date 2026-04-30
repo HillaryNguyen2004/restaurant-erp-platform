@@ -10,8 +10,11 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { ForgotPasswordInput, ForgotPasswordSchema } from "../config/auth.config";
+import { useForgotPassword } from "../data-access/auth.queries";
 
 export function ForgotPasswordForm() {
+    const forgotPasswordMutation = useForgotPassword();
+
     const {
         register,
         handleSubmit,
@@ -23,8 +26,13 @@ export function ForgotPasswordForm() {
         },
     });
 
-    const onSubmit = (data: ForgotPasswordInput) => {
-        toast.success("Yêu cầu đặt lại mật khẩu đã được gửi đến email của bạn.");
+    const onSubmit = async (data: ForgotPasswordInput) => {
+        try {
+            await forgotPasswordMutation.mutateAsync(data.email);
+            toast.success("Yêu cầu đặt lại mật khẩu đã được gửi đến email của bạn.");
+        } catch (error) {
+            toast.error("Gửi yêu cầu thất bại. Vui lòng thử lại.");
+        }
     };
 
     return (
@@ -46,8 +54,13 @@ export function ForgotPasswordForm() {
                         />
                         <FieldError errors={[errors.email]} />
                     </Field>
-                    <Button type="submit" className="w-full font-semibold shadow-md active:scale-95 transition-transform" size="lg">
-                        Gửi yêu cầu
+                    <Button 
+                        type="submit" 
+                        className="w-full font-semibold shadow-md active:scale-95 transition-transform" 
+                        size="lg"
+                        disabled={forgotPasswordMutation.isPending}
+                    >
+                        {forgotPasswordMutation.isPending ? "Đang xử lý..." : "Gửi yêu cầu"}
                     </Button>
                 </form>
                 <div className="mt-6 text-center">

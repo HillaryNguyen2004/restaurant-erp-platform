@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/providers/auth-provider";
-import QueryProvider from "@/providers/query-provider";
+import { QueryProvider } from "@/providers/query-provider";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";

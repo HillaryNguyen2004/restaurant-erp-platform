@@ -1,18 +1,19 @@
 import { z } from "zod";
 
-export const KDSTicketSchema = z.object({
-    id: z.string().uuid(),
+export const KitchenTicketSchema = z.object({
+    id: z.string(),
     orderId: z.string(),
-    station: z.enum(["grill", "fryer", "bar", "salad", "dessert"]),
     items: z.array(z.object({
+        id: z.string(),
+        menuItemId: z.string(),
         name: z.string(),
         quantity: z.number(),
-        specialInstructions: z.string().optional(),
-        status: z.enum(["pending", "started", "cooking", "ready"]),
+        note: z.string().optional(),
+        status: z.enum(["PENDING", "PREPARING", "READY", "SERVED"]),
     })),
-    priority: z.number().default(0),
-    receivedAt: z.date(),
-    estimatedTime: z.number(), // in minutes
+    status: z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]),
+    createdAt: z.string(),
+    station: z.string().optional(),
 });
 
-export type KDSTicket = z.infer<typeof KDSTicketSchema>;
+export type KitchenTicket = z.infer<typeof KitchenTicketSchema>;
