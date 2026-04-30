@@ -1,120 +1,251 @@
-'use client';
+"use client"
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { kdsApi } from '@/features/kds/data-access/kds.api';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { KitchenTicketStatus } from '@/features/kds/config/kds.config';
-import { useRealtime } from '@/providers/realtime-provider';
-import { toast } from 'sonner';
-import { useAuth } from '@/features/auth/components/auth-provider';
-import { LogOut } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { kdsApi } from "@/features/kds/data-access/kds.api"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  KitchenTicketStatus,
+  getWaitingMinutes,
+  getUrgencyLevel,
+  sortTicketsByPriority,
+} from "@/features/kds/config/kds.config"
+import { useRealtime } from "@/providers/realtime-provider"
+import { toast } from "sonner"
+import { useAuth } from "@/features/auth/components/auth-provider"
+import { Clock, AlertTriangle, LogOut } from "lucide-react"
+import { useEffect, useState } from "react"
 
 export default function KDSPage() {
-  const queryClient = useQueryClient();
-  const { emit } = useRealtime();
-  const { logout } = useAuth();
+  const queryClient = useQueryClient()
+  const { emit } = useRealtime()
+  const { logout } = useAuth()
+
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   const { data: tickets, isLoading } = useQuery({
-    queryKey: ['tickets'],
+    queryKey: ["tickets"],
     queryFn: kdsApi.getTickets,
-  });
+    refetchInterval: 10000, // auto refresh
+  })
 
   const mutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: KitchenTicketStatus }) =>
       kdsApi.updateTicketStatus(id, status),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      // Emit event for other roles (e.g., Customer needs to know status changed)
-      emit('ORDER_STATUS_UPDATED', { orderId: data.orderId, status: data.status });
-      toast.success(`Ticket updated to ${data.status}`);
+      queryClient.invalidateQueries({ queryKey: ["tickets"] })
+      emit("ORDER_STATUS_UPDATED", {
+        orderId: data.orderId,
+        status: data.status,
+      })
+      toast.success(`Ticket updated to ${data.status}`)
     },
-  });
+  })
 
-  if (isLoading) return <div className="p-8">Loading Tickets...</div>;
+  if (isLoading)
+    return (
+      <div className="flex h-64 items-center justify-center text-slate-400">
+        Loading tickets...
+      </div>
+    )
 
-  const getStatusColor = (status: KitchenTicketStatus) => {
-    switch (status) {
-      case 'PENDING': return 'bg-yellow-500';
-      case 'IN_PROGRESS': return 'bg-blue-500';
-      case 'READY': return 'bg-green-500';
-      case 'COMPLETED': return 'bg-gray-500';
-      default: return 'bg-red-500';
-    }
-  };
+  // Filter out completed/cancelled tickets and sort by urgency
+  const activeTickets = sortTicketsByPriority(
+    (tickets ?? []).filter(
+      (t) => t.status !== "COMPLETED" && t.status !== "CANCELLED"
+    )
+  )
+
+  const getNextStatus = (
+    status: KitchenTicketStatus
+  ): KitchenTicketStatus | null => {
+    if (status === "PENDING") return "IN_PROGRESS"
+    if (status === "IN_PROGRESS") return "READY"
+    if (status === "READY") return "COMPLETED"
+    return null
+  }
+
+  const getNextLabel = (status: KitchenTicketStatus) => {
+    if (status === "PENDING") return "Start Cooking"
+    if (status === "IN_PROGRESS") return "Mark Ready"
+    if (status === "READY") return "Complete"
+    return null
+  }
+
+  const urgencyConfig = {
+    critical: {
+      card: "border-red-400 bg-red-950/30",
+      badge: "bg-red-500 text-white",
+      timer: "text-red-400 animate-pulse",
+      icon: <AlertTriangle className="h-3.5 w-3.5" />,
+      label: "URGENT",
+    },
+    warning: {
+      card: "border-amber-400 bg-amber-950/20",
+      badge: "bg-amber-500 text-white",
+      timer: "text-amber-400",
+      icon: <Clock className="h-3.5 w-3.5" />,
+      label: "SOON",
+    },
+    normal: {
+      card: "border-slate-700 bg-slate-800/50",
+      badge: "bg-slate-600 text-white",
+      timer: "text-slate-400",
+      icon: <Clock className="h-3.5 w-3.5" />,
+      label: null,
+    },
+  }
 
   return (
-    <div className="p-4 h-screen flex flex-col">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold">Kitchen Display System</h1>
-          <Button variant="ghost" size="icon" onClick={() => logout()} title="Logout">
-            <LogOut className="w-5 h-5" />
-          </Button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black tracking-tight text-white uppercase italic">
+            Kitchen Display
+          </h2>
+          <p className="text-sm text-slate-400">
+            {activeTickets.length} active ticket
+            {activeTickets.length !== 1 ? "s" : ""} — sorted by urgency
+          </p>
         </div>
-        <Badge variant="outline" className="text-lg py-1 px-3">
-          {tickets?.filter(t => t.status !== 'COMPLETED').length} Active Tickets
-        </Badge>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={logout}
+          className="text-slate-400"
+        >
+          <LogOut className="h-5 w-5" />
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto">
-        {tickets?.filter(t => t.status !== 'COMPLETED').map((ticket) => (
-          <Card key={ticket.id} className="border-l-4 border-l-primary flex flex-col">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-xl">Table {ticket.tableNumber}</CardTitle>
-                  <CardDescription>Order #{ticket.orderId.slice(-4)}</CardDescription>
+      {activeTickets.length === 0 && (
+        <div className="flex h-64 flex-col items-center justify-center text-slate-500">
+          <span className="mb-3 text-5xl">🍽️</span>
+          <p className="font-medium">No active tickets</p>
+        </div>
+      )}
+
+      {/* Ticket grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {activeTickets.map((ticket) => {
+          const urgency = getUrgencyLevel(ticket)
+          const waited = getWaitingMinutes(ticket.createdAt)
+          const config = urgencyConfig[urgency]
+          const nextStatus = getNextStatus(ticket.status)
+          const nextLabel = getNextLabel(ticket.status)
+
+          return (
+            <Card
+              key={ticket.id}
+              className={`border-2 transition-all duration-300 ${config.card}`}
+            >
+              <CardHeader className="space-y-2 p-4 pb-2">
+                {/* Table + urgency */}
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg text-white">
+                    Table {ticket.tableNumber}
+                  </CardTitle>
+                  {config.label && (
+                    <Badge
+                      className={`gap-1 text-xs font-bold ${config.badge}`}
+                    >
+                      {config.icon}
+                      {config.label}
+                    </Badge>
+                  )}
                 </div>
-                <Badge className={getStatusColor(ticket.status)}>{ticket.status}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-grow">
-              <ul className="space-y-2">
-                {ticket.items.map((item, idx) => (
-                  <li key={idx} className="flex justify-between">
-                    <span className="font-medium">{item.quantity}x {item.menuItemName}</span>
-                    {item.specialInstructions && (
-                      <span className="text-xs text-muted-foreground block italic">
-                        {item.specialInstructions}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-            <CardFooter className="pt-2 gap-2">
-              {ticket.status === 'PENDING' && (
-                <Button 
-                  className="w-full" 
-                  onClick={() => mutation.mutate({ id: ticket.id, status: 'IN_PROGRESS' })}
-                >
-                  Start Cooking
-                </Button>
-              )}
-              {ticket.status === 'IN_PROGRESS' && (
-                <Button 
-                  className="w-full" 
-                  variant="secondary"
-                  onClick={() => mutation.mutate({ id: ticket.id, status: 'READY' })}
-                >
-                  Mark Ready
-                </Button>
-              )}
-              {ticket.status === 'READY' && (
-                <Button 
-                  className="w-full" 
+
+                {/* Waiting time bar */}
+                <div className="space-y-1">
+                  <div
+                    className={`flex items-center gap-1.5 text-xs font-bold ${config.timer}`}
+                  >
+                    {config.icon}
+                    Waiting: {waited}m / {ticket.prepTimeMinutes}m est.
+                  </div>
+                  {/* Progress bar */}
+                  <div className="h-1.5 w-full rounded-full bg-slate-700">
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-1000 ${
+                        urgency === "critical"
+                          ? "bg-red-500"
+                          : urgency === "warning"
+                            ? "bg-amber-500"
+                            : "bg-emerald-500"
+                      }`}
+                      style={{
+                        width: `${Math.min((waited / ticket.prepTimeMinutes) * 100, 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Status badge */}
+                <Badge
                   variant="outline"
-                  onClick={() => mutation.mutate({ id: ticket.id, status: 'COMPLETED' })}
+                  className="w-fit border-slate-600 text-xs text-slate-300"
                 >
-                  Finish
+                  {ticket.status.replace("_", " ")}
+                </Badge>
+              </CardHeader>
+
+              {/* Items list */}
+              <CardContent className="p-4 pt-2">
+                <ul className="space-y-1">
+                  {ticket.items.map((item) => (
+                    <li key={item.id} className="flex justify-between text-sm">
+                      <span className="text-slate-200">
+                        {item.menuItemName}
+                      </span>
+                      <span className="font-mono text-slate-400">
+                        ×{item.quantity}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+
+              {/* Action button */}
+              <CardFooter className="flex gap-2 p-4 pt-0">
+                {nextStatus && nextLabel && (
+                  <Button
+                    className="h-9 flex-1 text-xs font-bold"
+                    disabled={mutation.isPending}
+                    onClick={() =>
+                      mutation.mutate({ id: ticket.id, status: nextStatus })
+                    }
+                  >
+                    {nextLabel}
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 border-slate-600 text-xs text-slate-400"
+                  onClick={() =>
+                    mutation.mutate({ id: ticket.id, status: "CANCELLED" })
+                  }
+                  disabled={mutation.isPending}
+                >
+                  Cancel
                 </Button>
-              )}
-            </CardFooter>
-          </Card>
-        ))}
+              </CardFooter>
+            </Card>
+          )
+        })}
       </div>
     </div>
-  );
+  )
 }
