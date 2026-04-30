@@ -1,11 +1,11 @@
-import { z } from 'zod';
+import { z } from "zod"
 
 export const MenuCategorySchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().optional(),
-});
-export type MenuCategory = z.infer<typeof MenuCategorySchema>;
+})
+export type MenuCategory = z.infer<typeof MenuCategorySchema>
 
 export const MenuItemSchema = z.object({
   id: z.string(),
@@ -18,5 +18,6 @@ export const MenuItemSchema = z.object({
   courseType: z.string(),
   prepTimeMinutes: z.number(),
   allergyTags: z.array(z.string()),
-});
-export type MenuItem = z.infer<typeof MenuItemSchema>;
+  imageUrl: z.string().optional(),
+})
+export type MenuItem = z.infer<typeof MenuItemSchema>
