@@ -6,6 +6,7 @@ export interface ITableApi {
   updateTableStatus(tableId: string, status: TableStatus): Promise<Table>
   getOrdersByTable(tableNumber: string): Promise<Order[]>
   placeOrderForTable(tableNumber: string, items: Order["items"]): Promise<Order>
+  checkoutTable(tableNumber: string): Promise<void>
 }
 
 class MockTableApi implements ITableApi {
@@ -94,6 +95,18 @@ class MockTableApi implements ITableApi {
     localStorage.setItem("mock_orders", JSON.stringify(orders))
     return newOrder
   }
+  async checkoutTable(tableNumber: string): Promise<void> {
+    const saved = localStorage.getItem("mock_orders")
+    const orders: Order[] = saved ? JSON.parse(saved) : []
+    const updated = orders.map((o) =>
+      o.tableNumber === tableNumber &&
+      o.status !== "CANCELLED" &&
+      o.status !== "PAID"
+        ? { ...o, status: "PAID" as const }
+        : o
+    )
+    localStorage.setItem("mock_orders", JSON.stringify(updated))
+  }
 }
 
 class RealTableApi implements ITableApi {
@@ -129,6 +142,19 @@ class RealTableApi implements ITableApi {
       body: JSON.stringify({ tableNumber, items }),
     })
     return res.json()
+  }
+
+  async checkoutTable(tableNumber: string): Promise<void> {
+    const saved = localStorage.getItem("mock_orders")
+    const orders: Order[] = saved ? JSON.parse(saved) : []
+    const updated = orders.map((o) =>
+      o.tableNumber === tableNumber &&
+      o.status !== "CANCELLED" &&
+      o.status !== "PAID"
+        ? { ...o, status: "PAID" as const }
+        : o
+    )
+    localStorage.setItem("mock_orders", JSON.stringify(updated))
   }
 }
 

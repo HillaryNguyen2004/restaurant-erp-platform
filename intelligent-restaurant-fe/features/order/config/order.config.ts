@@ -1,13 +1,14 @@
-import { z } from 'zod';
+import { z } from "zod"
 
 export const OrderStatusSchema = z.enum([
-  'PLACED',
-  'PREPARING',
-  'READY',
-  'SERVED',
-  'CANCELLED',
-]);
-export type OrderStatus = z.infer<typeof OrderStatusSchema>;
+  "PLACED",
+  "PREPARING",
+  "READY",
+  "SERVED",
+  "CANCELLED",
+  "PAID",
+])
+export type OrderStatus = z.infer<typeof OrderStatusSchema>
 
 export const OrderItemSchema = z.object({
   id: z.string(),
@@ -17,8 +18,8 @@ export const OrderItemSchema = z.object({
   price: z.number(),
   specialInstructions: z.string().optional(),
   status: OrderStatusSchema.optional(),
-});
-export type OrderItem = z.infer<typeof OrderItemSchema>;
+})
+export type OrderItem = z.infer<typeof OrderItemSchema>
 
 export const OrderSchema = z.object({
   id: z.string(),
@@ -27,5 +28,5 @@ export const OrderSchema = z.object({
   items: z.array(OrderItemSchema),
   total: z.number(),
   createdAt: z.string(),
-});
-export type Order = z.infer<typeof OrderSchema>;
+})
+export type Order = z.infer<typeof OrderSchema>

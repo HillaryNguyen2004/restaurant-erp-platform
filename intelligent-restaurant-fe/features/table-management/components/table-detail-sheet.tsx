@@ -18,6 +18,7 @@ import { menuApi } from "@/features/menu/data-access/menu.api"
 import { MenuItem } from "@/features/menu/config/menu.config"
 import { Order } from "@/features/order/config/order.config"
 import {
+  CheckCircle,
   Minus,
   Plus,
   ShoppingCart,
@@ -26,6 +27,7 @@ import {
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
+import { Printer } from "lucide-react"
 
 interface Props {
   table: Table | null
@@ -51,7 +53,6 @@ export function TableDetailSheet({ table, onClose }: Props) {
   const queryClient = useQueryClient()
   const [cart, setCart] = useState<CartItem[]>([])
 
-  // Reset cart mỗi khi đổi bàn
   useEffect(() => {
     setCart([])
   }, [table?.id])
@@ -133,7 +134,52 @@ export function TableDetailSheet({ table, onClose }: Props) {
         .filter((c) => c.quantity > 0)
     )
   }
+  const checkoutMutation = useMutation({
+    mutationFn: () => tableApi.checkoutTable(table!.tableNumber),
+    onSuccess: () => {
+      tableApi.updateTableStatus(table!.id, "AVAILABLE")
+      queryClient.invalidateQueries({
+        queryKey: ["table-orders", table?.tableNumber],
+      })
+      queryClient.invalidateQueries({ queryKey: ["tables"] })
+      toast.success(`Table ${table?.tableNumber} checked out!`)
+      onClose()
+    },
+  })
+  const handleCheckout = () => checkoutMutation.mutate()
 
+  const handlePrint = () => {
+    const allItems = orders.flatMap((o) => o.items)
+    const subtotal = billTotal
+    const tax = billTotal * 0.1
+    const total = billTotal * 1.1
+
+    const rows = [
+      [`Table ${table?.tableNumber} — Bill`],
+      [`Date: ${new Date().toLocaleString("vi-VN")}`],
+      [],
+      ["Item", "Qty", "Unit Price", "Amount"],
+      ...allItems.map((i) => [
+        i.menuItemName,
+        i.quantity,
+        `$${i.price.toFixed(2)}`,
+        `$${(i.price * i.quantity).toFixed(2)}`,
+      ]),
+      [],
+      ["", "", "Subtotal", `$${subtotal.toFixed(2)}`],
+      ["", "", "Tax (10%)", `$${tax.toFixed(2)}`],
+      ["", "", "TOTAL", `$${total.toFixed(2)}`],
+    ]
+
+    const csv = rows.map((r) => r.join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `bill-table-${table?.tableNumber}-${Date.now()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0)
   const billTotal = orders.reduce((sum, o) => sum + o.total, 0)
 
@@ -169,8 +215,59 @@ export function TableDetailSheet({ table, onClose }: Props) {
               {cart.length > 0 &&
                 `(${cart.reduce((s, i) => s + i.quantity, 0)})`}
             </TabsTrigger>
+            <TabsTrigger value="bill" className="flex-1">
+              Bill
+            </TabsTrigger>
           </TabsList>
 
+          <TabsContent value="bill">
+            {/* List */}
+            {orders
+              .flatMap((o) => o.items)
+              .map((item) => (
+                <div key={item.id} className="flex justify-between text-sm">
+                  <span>
+                    {item.menuItemName} ×{item.quantity}
+                  </span>
+                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+              ))}
+
+            <Separator />
+
+            {/* Subtotal / Tax / Total */}
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Subtotal</span>
+                <span>${billTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tax (10%)</span>
+                <span>${(billTotal * 0.1).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-base font-black">
+                <span>Total</span>
+                <span className="text-emerald-600">
+                  ${(billTotal * 1.1).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <Button
+              onClick={handlePrint}
+              variant="outline"
+              className="w-full gap-2"
+            >
+              <Printer className="h-4 w-4" /> Print Bill
+            </Button>
+            <Button
+              onClick={handleCheckout}
+              className="w-full gap-2 bg-emerald-600"
+            >
+              <CheckCircle className="h-4 w-4" /> Mark as Paid
+            </Button>
+          </TabsContent>
           {/* ── Tab Orders ── */}
           <TabsContent value="orders" className="space-y-3">
             {loadingOrders && (
