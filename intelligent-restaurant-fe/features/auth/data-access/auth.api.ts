@@ -6,18 +6,25 @@ export interface IAuthApi {
 }
 
 const MOCK_USERS: Record<string, User & { password: string }> = {
-  'customer@example.com': {
+  'table1@example.com': {
     id: 'u1',
-    email: 'customer@example.com',
-    name: 'Mock Customer',
-    roles: ['CUSTOMER'],
+    email: 'table1@example.com',
+    name: 'Table 1',
+    roles: ['TABLE'],
     password: 'password'
   },
-  'chef@example.com': {
+  'table2@example.com': {
+    id: 'u1.2',
+    email: 'table2@example.com',
+    name: 'Table 2',
+    roles: ['TABLE'],
+    password: 'password'
+  },
+  'kitchen@example.com': {
     id: 'u2',
-    email: 'chef@example.com',
-    name: 'Mock Chef',
-    roles: ['CHEF'],
+    email: 'kitchen@example.com',
+    name: 'Kitchen Staff',
+    roles: ['KITCHEN_STAFF'],
     password: 'password'
   },
   'cashier@example.com': {
@@ -25,6 +32,13 @@ const MOCK_USERS: Record<string, User & { password: string }> = {
     email: 'cashier@example.com',
     name: 'Mock Cashier',
     roles: ['CASHIER'],
+    password: 'password'
+  },
+  'staff@example.com': {
+    id: 'u5',
+    email: 'staff@example.com',
+    name: 'Table Staff',
+    roles: ['TABLE_STAFF'],
     password: 'password'
   },
   'admin@example.com': {

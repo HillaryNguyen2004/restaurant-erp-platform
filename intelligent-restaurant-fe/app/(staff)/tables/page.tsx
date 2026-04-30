@@ -19,7 +19,8 @@ import { TableDetailSheet } from "@/features/table-management/components/table-d
 export default function TablesPage() {
   const queryClient = useQueryClient()
   const { emit } = useRealtime()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
+  const role = user?.roles?.[0]
 
   const [selectedTable, setSelectedTable] = useState<Table | null>(null)
   const { data: tables, isLoading } = useQuery({
@@ -55,10 +56,12 @@ export default function TablesPage() {
   }
 
   return (
-    <div className="p-4">
+    <div className="container mx-auto p-8">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold">Table Management</h1>
+          <h1 className="text-4xl font-black tracking-tight text-slate-900">
+            Table Management
+          </h1>
           <Button
             variant="ghost"
             size="icon"
@@ -69,15 +72,15 @@ export default function TablesPage() {
           </Button>
         </div>
         <Badge variant="outline" className="px-3 py-1 text-lg">
-          {tables?.filter((t) => t.status === "AVAILABLE").length} Free Tables
+          {tables?.filter((t) => t.status === "AVAILABLE").length ?? 0} Free Tables
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {tables?.map((table) => (
           <Card
             key={table.id}
-            className="overflow-hidden text-center"
+            className="overflow-hidden border-2 border-slate-100 transition-all cursor-pointer hover:shadow-xl hover:scale-[1.02]"
             onClick={() => setSelectedTable(table)}
           >
             <CardHeader className="p-4 pb-2">
@@ -86,46 +89,48 @@ export default function TablesPage() {
                 {table.status}
               </Badge>
             </CardHeader>
-            <CardContent className="p-4 pt-2">
-              <div className="mb-4 text-sm text-muted-foreground">
-                Cap: {table.capacity}
+            <CardContent className="p-5 pt-2 text-center">
+              <div className="mb-4 text-sm font-medium text-slate-500">
+                Capacity: {table.capacity}
               </div>
-              <div
-                className="grid grid-cols-1 gap-2"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {table.status === "AVAILABLE" ? (
+                {(role === "TABLE_STAFF" || role === "ADMIN") && (
                   <>
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        mutation.mutate({ id: table.id, status: "OCCUPIED" })
-                      }
-                    >
-                      Occupy
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        mutation.mutate({ id: table.id, status: "RESERVED" })
-                      }
-                    >
-                      Reserve
-                    </Button>
+                    {table.status === "AVAILABLE" ? (
+                      <>
+                        <Button
+                          size="sm"
+                          className="w-full bg-slate-900 text-white hover:bg-slate-800"
+                          onClick={() =>
+                            mutation.mutate({ id: table.id, status: "OCCUPIED" })
+                          }
+                        >
+                          Occupy
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full border-2"
+                          onClick={() =>
+                            mutation.mutate({ id: table.id, status: "RESERVED" })
+                          }
+                        >
+                          Reserve
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="w-full text-slate-500 hover:bg-slate-100"
+                        onClick={() =>
+                          mutation.mutate({ id: table.id, status: "AVAILABLE" })
+                        }
+                      >
+                        Release
+                      </Button>
+                    )}
                   </>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      mutation.mutate({ id: table.id, status: "AVAILABLE" })
-                    }
-                  >
-                    Release
-                  </Button>
                 )}
-              </div>
             </CardContent>
           </Card>
         ))}

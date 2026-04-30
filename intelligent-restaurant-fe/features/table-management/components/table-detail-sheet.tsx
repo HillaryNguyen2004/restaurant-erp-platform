@@ -1,37 +1,39 @@
 "use client"
 
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table } from "../config/table.config"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { tableApi } from "../data-access/table.api"
+import { useAuth } from "@/features/auth/components/auth-provider"
 import { kdsApi } from "@/features/kds/data-access/kds.api"
-import { menuApi } from "@/features/menu/data-access/menu.api"
 import { MenuItem } from "@/features/menu/config/menu.config"
+import { menuApi } from "@/features/menu/data-access/menu.api"
 import { Order } from "@/features/order/config/order.config"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   CheckCircle,
   Minus,
   Plus,
+  Printer,
   ShoppingCart,
   Trash2,
   UtensilsCrossed,
 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { Printer } from "lucide-react"
+import { Table } from "../config/table.config"
+import { tableApi } from "../data-access/table.api"
 
 interface Props {
   table: Table | null
   onClose: () => void
+  defaultTab?: "orders" | "pos" | "bill"
 }
 
 type CartItem = {
@@ -49,7 +51,9 @@ const STATUS_COLOR: Record<string, string> = {
   CANCELLED: "bg-red-100 text-red-500",
 }
 
-export function TableDetailSheet({ table, onClose }: Props) {
+export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
+  const { user } = useAuth()
+  const role = user?.roles?.[0]
   const queryClient = useQueryClient()
   const [cart, setCart] = useState<CartItem[]>([])
 
@@ -203,21 +207,25 @@ export function TableDetailSheet({ table, onClose }: Props) {
           </div>
         </SheetHeader>
 
-        <Tabs defaultValue="orders">
+        <Tabs defaultValue={defaultTab || "orders"}>
           <TabsList className="mb-4 w-full">
             <TabsTrigger value="orders" className="flex-1">
               <UtensilsCrossed className="mr-1.5 h-4 w-4" />
               Orders ({orders.length})
             </TabsTrigger>
-            <TabsTrigger value="pos" className="flex-1">
-              <ShoppingCart className="mr-1.5 h-4 w-4" />
-              POS{" "}
-              {cart.length > 0 &&
-                `(${cart.reduce((s, i) => s + i.quantity, 0)})`}
-            </TabsTrigger>
-            <TabsTrigger value="bill" className="flex-1">
-              Bill
-            </TabsTrigger>
+            {(role === "TABLE" || role === "ADMIN") && (
+              <TabsTrigger value="pos" className="flex-1">
+                <ShoppingCart className="mr-1.5 h-4 w-4" />
+                POS{" "}
+                {cart.length > 0 &&
+                  `(${cart.reduce((s, i) => s + i.quantity, 0)})`}
+              </TabsTrigger>
+            )}
+            {(role === "CASHIER" || role === "ADMIN") && (
+              <TabsTrigger value="bill" className="flex-1">
+                Bill
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="bill">

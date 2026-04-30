@@ -4,4 +4,4 @@ export const CONFIG = {
   WS_URL: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000',
 };
 
-export type Role = 'CUSTOMER' | 'CHEF' | 'CASHIER' | 'ADMIN';
+export type Role = 'TABLE' | 'KITCHEN_STAFF' | 'CASHIER' | 'TABLE_STAFF' | 'ADMIN';

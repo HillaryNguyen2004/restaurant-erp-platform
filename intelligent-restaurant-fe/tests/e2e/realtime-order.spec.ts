@@ -7,10 +7,9 @@ test.describe('Realtime Ordering Flow', () => {
     const customerPage = await customerContext.newPage();
     await customerPage.goto('http://localhost:3000/login');
     
-    // Login as Customer
-    await customerPage.fill('input[type="email"]', 'customer@example.com');
-    await customerPage.selectOption('select', 'CUSTOMER');
-    await customerPage.click('button:has-text("Login")');
+    // Login as Table
+    await customerPage.fill('input[type="email"]', 'table1@example.com');
+    await customerPage.click('button:has-text("Sign In")');
     await expect(customerPage).toHaveURL(/.*menu/);
 
     // Context B: Chef
@@ -18,10 +17,9 @@ test.describe('Realtime Ordering Flow', () => {
     const chefPage = await chefContext.newPage();
     await chefPage.goto('http://localhost:3000/login');
     
-    // Login as Chef
-    await chefPage.fill('input[type="email"]', 'chef@example.com');
-    await chefPage.selectOption('select', 'CHEF');
-    await chefPage.click('button:has-text("Login")');
+    // Login as Kitchen Staff
+    await chefPage.fill('input[type="email"]', 'kitchen@example.com');
+    await chefPage.click('button:has-text("Sign In")');
     await expect(chefPage).toHaveURL(/.*kds/);
 
     // Customer adds item to cart and places order
@@ -32,11 +30,11 @@ test.describe('Realtime Ordering Flow', () => {
     // Check if toast success appears
     await expect(customerPage.locator('text=Order placed successfully')).toBeVisible();
 
-    // Chef should see the new ticket without reload
-    // The ticket ID is random, so we check for "Table A1" (the mock table)
-    await expect(chefPage.locator('text=Table A1')).toBeVisible();
+    // Kitchen Staff should see the new ticket without reload
+    // The ticket ID is random, so we check for "Table 1" (the mock table)
+    await expect(chefPage.locator('text=Table 1')).toBeVisible();
     
-    // Chef starts cooking
+    // Kitchen Staff starts cooking
     await chefPage.click('button:has-text("Start Cooking")');
     await expect(chefPage.locator('text=IN_PROGRESS')).toBeVisible();
 

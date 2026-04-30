@@ -14,9 +14,10 @@ export default function HomePage() {
         router.push('/login');
       } else {
         const role = user?.roles?.[0];
-        if (role === 'CUSTOMER') router.push('/menu');
-        else if (role === 'CHEF') router.push('/kds');
-        else if (role === 'CASHIER') router.push('/tables');
+        if (role === 'TABLE') router.push('/menu');
+        else if (role === 'KITCHEN_STAFF') router.push('/kds');
+        else if (role === 'CASHIER') router.push('/billing');
+        else if (role === 'TABLE_STAFF') router.push('/tables');
         else if (role === 'ADMIN') router.push('/analytics');
         else router.push('/login'); // Fallback if no roles
       }

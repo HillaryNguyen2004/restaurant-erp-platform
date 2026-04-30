@@ -70,7 +70,7 @@ class MockTableApi implements ITableApi {
     return orders.filter(
       (o) =>
         o.tableNumber === tableNumber &&
-        o.status !== "SERVED" &&
+        o.status !== "PAID" &&
         o.status !== "CANCELLED"
     )
   }

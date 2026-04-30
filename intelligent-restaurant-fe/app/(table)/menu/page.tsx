@@ -1,6 +1,5 @@
 'use client';
 
-import { useRealtime } from '@/providers/realtime-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -16,6 +15,7 @@ import { menuQueries } from '@/features/menu/data-access/menu.queries';
 import { ActiveOrdersSheet } from '@/features/order/components/active-orders-sheet';
 import { OrderItem } from '@/features/order/config/order.config';
 import { orderQueries } from '@/features/order/data-access/order.queries';
+import { useRealtime } from '@/providers/realtime-provider';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, LogOut, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
@@ -95,7 +95,7 @@ export default function MenuPage() {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-8">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
           <h1 className="text-3xl font-bold">Our Menu</h1>
@@ -123,7 +123,7 @@ export default function MenuPage() {
               <SheetHeader>
                 <SheetTitle>Your Cart</SheetTitle>
               </SheetHeader>
-              <div className="mt-8 flex flex-col h-full pb-10 px-5">
+              <div className="mt-8 flex flex-col h-full pb-10 px-3">
                 {cart.length === 0 ? (
                   <div className="text-center py-10 text-muted-foreground">
                     Your cart is empty

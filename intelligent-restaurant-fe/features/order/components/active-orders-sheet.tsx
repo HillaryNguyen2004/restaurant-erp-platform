@@ -1,17 +1,16 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Clock } from 'lucide-react';
-import { Order } from '../config/order.config';
-import { orderQueries } from '../data-access/order.queries';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ClipboardList, Clock } from 'lucide-react';
+import { orderQueries } from '../data-access/order.queries';
 
 export function ActiveOrdersSheet() {
   const { data: orders, isLoading } = orderQueries.useOrders();
-  
-  // In a real app, we'd filter by the current customer's session/table
-  // For now, we'll show all orders placed at table 'A1' (mock customer table)
-  const customerOrders = orders?.filter(o => o.tableNumber === 'A1') || [];
+
+  // In a real app, we'd filter by the current session/table
+  // For now, we'll show all orders placed at table 'A1' (mock table)
+  const tableOrders = orders?.filter(o => o.tableNumber === 'A1') || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -30,9 +29,9 @@ export function ActiveOrdersSheet() {
         <Button variant="outline" className="gap-2">
           <ClipboardList className="w-4 h-4" />
           Orders
-          {customerOrders.length > 0 && (
+          {tableOrders.length > 0 && (
             <Badge variant="secondary" className="ml-1">
-              {customerOrders.filter(o => o.status !== 'SERVED' && o.status !== 'CANCELLED').length}
+              {tableOrders.filter(o => o.status !== 'SERVED' && o.status !== 'CANCELLED').length}
             </Badge>
           )}
         </Button>
@@ -41,15 +40,15 @@ export function ActiveOrdersSheet() {
         <SheetHeader>
           <SheetTitle>Order Status</SheetTitle>
         </SheetHeader>
-        <div className="mt-8 space-y-6 overflow-y-auto max-h-[calc(100vh-100px)] pr-2">
+        <div className="mt-8 space-y-6 overflow-y-auto max-h-[calc(100vh-100px)] px-3">
           {isLoading ? (
             <div className="text-center py-10">Loading orders...</div>
-          ) : customerOrders.length === 0 ? (
+          ) : tableOrders.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground italic">
               No active orders yet.
             </div>
           ) : (
-            customerOrders.map((order) => (
+            tableOrders.map((order) => (
               <div key={order.id} className="space-y-3 p-4 rounded-lg border bg-card">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -59,7 +58,7 @@ export function ActiveOrdersSheet() {
                     {order.status}
                   </Badge>
                 </div>
-                
+
                 <div className="space-y-2">
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-sm">
@@ -68,9 +67,9 @@ export function ActiveOrdersSheet() {
                     </div>
                   ))}
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="flex justify-between items-center pt-1">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="w-3 h-3" />

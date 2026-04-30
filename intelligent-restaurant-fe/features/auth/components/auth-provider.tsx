@@ -24,9 +24,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Restore session
-    const savedUser = localStorage.getItem('auth_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    const savedAuth = localStorage.getItem('auth_user');
+    if (savedAuth) {
+      const { user } = JSON.parse(savedAuth);
+      setUser(user);
     }
     setIsLoading(false);
   }, []);
@@ -40,9 +41,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Redirect based on role
       const role = newUser.user.roles[0];
-      if (role === 'CUSTOMER') router.push('/menu');
-      else if (role === 'CHEF') router.push('/kds');
-      else if (role === 'CASHIER') router.push('/tables');
+      if (role === 'TABLE') router.push('/menu');
+      else if (role === 'KITCHEN_STAFF') router.push('/kds');
+      else if (role === 'CASHIER') router.push('/billing');
+      else if (role === 'TABLE_STAFF') router.push('/tables');
       else if (role === 'ADMIN') router.push('/analytics');
     } catch (error) {
       toast.error('Login failed. Please check your credentials.');
