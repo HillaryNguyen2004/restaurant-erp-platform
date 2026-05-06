@@ -1,0 +1,323 @@
+@startuml
+left to right direction
+scale 0.75
+
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam nodesep 80
+skinparam ranksep 100
+skinparam padding 4
+skinparam ArrowThickness 0.7
+skinparam ArrowFontSize 8
+skinparam defaultFontSize 10
+skinparam dpi 96
+
+
+skinparam class {
+  Padding 2
+  FontSize 10
+}
+
+!define CONTROLLER #D6EAF8
+!define INBOUND #E8DAEF
+!define SERVICE #D5F5E3
+!define OUTBOUND #FCF3CF
+!define ADAPTER #FAD7A0
+!define DOMAIN #F2F3F4
+!define DTO #EBF5FB
+
+interface IAuthenticationController CONTROLLER {
+  +login(dto: LoginDto): TokenPair
+}
+
+class AuthenticationControllerImpl CONTROLLER {
+  -authService: IAuthenticationService
+  +login(dto: LoginDto): TokenPair
+}
+
+interface IAuthenticationService INBOUND {
+  +login(dto: LoginDto): TokenPair
+}
+
+class AuthenticationServiceImpl SERVICE {
+  -userRepo: IUserRepository
+  -sessionRepo: ISessionRepository
+  -hasher: IPasswordHasher
+  -tokenProvider: ITokenProvider
+  +login(dto: LoginDto): TokenPair
+}
+
+interface IProfileController CONTROLLER {
+  +create(dto: CreateUserDto): User
+  +getById(id: string): User
+  +update(id: string, dto: UpdateProfileDto): User
+  +deactivate(id: string): void
+  +revokeSessions(id: string): void
+}
+
+class ProfileControllerImpl CONTROLLER {
+  -profileService: IProfileService
+  -sessionService: ISessionService
+  +create(dto: CreateUserDto): User
+  +getById(id: string): User
+  +update(id: string, dto: UpdateProfileDto): User
+  +deactivate(id: string): void
+  +revokeSessions(id: string): void
+}
+
+interface IProfileService INBOUND {
+  +createUser(dto: CreateUserDto): User
+  +getUserById(userId: string): User
+  +updateProfile(userId: string, dto: UpdateProfileDto): User
+  +deactivateUser(userId: string): void
+}
+
+class ProfileServiceImpl SERVICE {
+  -userRepo: IUserRepository
+  -hasher: IPasswordHasher
+  -eventPublisher: IEventPublisher
+  +createUser(dto: CreateUserDto): User
+  +getUserById(userId: string): User
+  +updateProfile(userId: string, dto: UpdateProfileDto): User
+  +deactivateUser(userId: string): void
+}
+
+interface IRoleController CONTROLLER {
+  +assign(userId: string, dto: AssignRoleDto): void
+  +remove(userId: string, dto: RemoveRoleDto): void
+}
+
+class RoleControllerImpl CONTROLLER {
+  -roleService: IRoleService
+  +assign(userId: string, dto: AssignRoleDto): void
+  +remove(userId: string, dto: RemoveRoleDto): void
+}
+
+interface IRoleService INBOUND {
+  +assignRole(userId: string, roleName: string): void
+  +removeRole(userId: string, roleName: string): void
+}
+
+class RoleServiceImpl SERVICE {
+  -userRepo: IUserRepository
+  -roleRepo: IRoleRepository
+  -eventPublisher: IEventPublisher
+  +assignRole(userId: string, roleName: string): void
+  +removeRole(userId: string, roleName: string): void
+}
+
+interface ISessionService INBOUND {
+  +revokeAll(userId: string): void
+}
+
+class SessionServiceImpl SERVICE {
+  -sessionRepo: ISessionRepository
+  +revokeAll(userId: string): void
+}
+
+interface IUserRepository OUTBOUND {
+  +findById(userId: string): User
+  +findByEmail(email: string): User
+  +save(user: User): void
+  +update(user: User): void
+}
+
+interface IRoleRepository OUTBOUND {
+  +findByName(roleName: string): Role
+}
+
+interface ISessionRepository OUTBOUND {
+  +save(session: UserSession): void
+  +revokeAll(userId: string): void
+}
+
+interface IPasswordHasher OUTBOUND {
+  +hash(rawPassword: string): string
+  +compare(rawPassword: string, passwordHash: string): boolean
+}
+
+interface ITokenProvider OUTBOUND {
+  +issueTokens(user: User): TokenPair
+}
+
+interface IEventPublisher OUTBOUND {
+  +publish(event: DomainEvent): void
+}
+
+class UserRepositoryImpl ADAPTER {
+  +findById(userId: string): User
+  +findByEmail(email: string): User
+  +save(user: User): void
+  +update(user: User): void
+}
+
+class RoleRepositoryImpl ADAPTER {
+  +findByName(roleName: string): Role
+}
+
+class SessionRepositoryImpl ADAPTER {
+  +save(session: UserSession): void
+  +revokeAll(userId: string): void
+}
+
+class BcryptHasherAdapter ADAPTER {
+  +hash(rawPassword: string): string
+  +compare(rawPassword: string, passwordHash: string): boolean
+}
+
+class JwtTokenProviderAdapter ADAPTER {
+  +issueTokens(user: User): TokenPair
+}
+
+class KafkaEventPublisherAdapter ADAPTER {
+  +publish(event: DomainEvent): void
+}
+
+class User DOMAIN {
+  -id: string
+  -email: string
+  -passwordHash: string
+  -isActive: boolean
+  -profile: UserProfile
+  -roles: Role[]
+  +assignRole(role: Role): void
+  +removeRole(roleName: string): void
+  +updateProfile(profile: UserProfile): void
+  +deactivate(): void
+}
+
+class UserProfile DOMAIN {
+  -fullName: string
+  -phone: string
+  -avatarUrl: string
+}
+
+class Role DOMAIN {
+  -id: string
+  -name: string
+}
+
+class UserSession DOMAIN {
+  -id: string
+  -userId: string
+  -refreshToken: string
+  -createdAt: Date
+}
+
+class TokenPair DOMAIN {
+  -accessToken: string
+  -refreshToken: string
+}
+
+interface DomainEvent DOMAIN {
+  +occurredAt: Date
+}
+
+class LoginDto DTO {
+  +email: string
+  +password: string
+}
+
+class CreateUserDto DTO {
+  +email: string
+  +password: string
+  +fullName: string
+  +phone: string
+  +avatarUrl: string
+}
+
+class UpdateProfileDto DTO {
+  +fullName?: string
+  +phone?: string
+  +avatarUrl?: string
+}
+
+class AssignRoleDto DTO {
+  +roleName: string
+}
+
+class RemoveRoleDto DTO {
+  +roleName: string
+}
+
+AuthenticationControllerImpl ..|> IAuthenticationController
+ProfileControllerImpl ..|> IProfileController
+RoleControllerImpl ..|> IRoleController
+
+AuthenticationServiceImpl ..|> IAuthenticationService
+ProfileServiceImpl ..|> IProfileService
+RoleServiceImpl ..|> IRoleService
+SessionServiceImpl ..|> ISessionService
+
+UserRepositoryImpl ..|> IUserRepository
+RoleRepositoryImpl ..|> IRoleRepository
+SessionRepositoryImpl ..|> ISessionRepository
+BcryptHasherAdapter ..|> IPasswordHasher
+JwtTokenProviderAdapter ..|> ITokenProvider
+KafkaEventPublisherAdapter ..|> IEventPublisher
+
+AuthenticationControllerImpl ..> IAuthenticationService : uses
+ProfileControllerImpl ..> IProfileService : uses
+ProfileControllerImpl ..> ISessionService : uses
+RoleControllerImpl ..> IRoleService : uses
+
+AuthenticationServiceImpl ..> IUserRepository : uses
+AuthenticationServiceImpl ..> ISessionRepository : uses
+AuthenticationServiceImpl ..> IPasswordHasher : uses
+AuthenticationServiceImpl ..> ITokenProvider : uses
+
+ProfileServiceImpl ..> IUserRepository : uses
+ProfileServiceImpl ..> IPasswordHasher : uses
+ProfileServiceImpl ..> IEventPublisher : uses
+
+RoleServiceImpl ..> IUserRepository : uses
+RoleServiceImpl ..> IRoleRepository : uses
+RoleServiceImpl ..> IEventPublisher : uses
+
+SessionServiceImpl ..> ISessionRepository : uses
+
+UserRepositoryImpl ..> User : maps
+RoleRepositoryImpl ..> Role : maps
+SessionRepositoryImpl ..> UserSession : maps
+JwtTokenProviderAdapter ..> TokenPair : creates
+KafkaEventPublisherAdapter ..> DomainEvent : publishes
+
+User *-- UserProfile
+User o-- "0..*" Role
+UserSession ..> User : userId
+TokenPair ..> UserSession : refreshToken
+
+' DTOs pushed to right side
+TokenPair -[hidden]right- LoginDto
+LoginDto -[hidden]down- CreateUserDto
+CreateUserDto -[hidden]down- UpdateProfileDto
+UpdateProfileDto -[hidden]down- AssignRoleDto
+AssignRoleDto -[hidden]down- RemoveRoleDto
+
+IAuthenticationController ..> LoginDto : uses
+IProfileController ..> CreateUserDto : uses
+IProfileController ..> UpdateProfileDto : uses
+IRoleController ..> AssignRoleDto : uses
+IRoleController ..> RemoveRoleDto : uses
+
+IAuthenticationController -[hidden]right- AuthenticationControllerImpl
+AuthenticationControllerImpl -[hidden]right- IAuthenticationService
+IAuthenticationService -[hidden]right- AuthenticationServiceImpl
+
+IProfileController -[hidden]right- ProfileControllerImpl
+ProfileControllerImpl -[hidden]right- IProfileService
+IProfileService -[hidden]right- ProfileServiceImpl
+
+IRoleController -[hidden]right- RoleControllerImpl
+RoleControllerImpl -[hidden]right- IRoleService
+IRoleService -[hidden]right- RoleServiceImpl
+
+IUserRepository -[hidden]right- UserRepositoryImpl
+IRoleRepository -[hidden]right- RoleRepositoryImpl
+ISessionRepository -[hidden]right- SessionRepositoryImpl
+IPasswordHasher -[hidden]right- BcryptHasherAdapter
+ITokenProvider -[hidden]right- JwtTokenProviderAdapter
+IEventPublisher -[hidden]right- KafkaEventPublisherAdapter
+
+@enduml

@@ -1,0 +1,7 @@
+export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
+export const ROLE_REPOSITORY = Symbol('ROLE_REPOSITORY');
+export const SESSION_REPOSITORY = Symbol('SESSION_REPOSITORY');
+
+export const PASSWORD_HASHER = Symbol('PASSWORD_HASHER');
+export const TOKEN_PROVIDER = Symbol('TOKEN_PROVIDER');
+export const EVENT_PUBLISHER = Symbol('EVENT_PUBLISHER');
