@@ -1,0 +1,93 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{Frontend Implementation: Intelligent Restaurant Management System}
+\author{Software Architecture Documentation}
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Frontend Structure}
+The project follows a \textbf{Feature-Driven Architecture}, where each business domain is encapsulated within its own module. This promotes high cohesion and low coupling.
+
+\subsection{Directory Layout}
+\begin{lstlisting}[language=bash]
+intelligent-restaurant-fe/
+├── app/                  # Next.js App Router (Pages & Layouts)
+│   ├── (admin)/          # Admin-facing pages (Analytics)
+│   ├── (auth)/           # Authentication pages (Login)
+│   ├── (chef)/           # Chef-facing pages (KDS)
+│   ├── (customer)/       # Customer-facing pages (Menu)
+│   └── (staff)/          # Staff-facing pages (Tables)
+├── components/           # Shared UI components (shadcn/ui)
+├── features/             # Business Logic (Feature-Driven)
+│   ├── [feature-name]/
+│   │   ├── components/   # Reusable feature-specific UI
+│   │   ├── config/       # Domain types & Zod schemas
+│   │   └── data-access/  # API interfaces, classes, and Query hooks
+├── lib/                  # Shared utilities and global config
+└── providers/            # Global context providers (Realtime, Query)
+\end{lstlisting}
+
+\subsection{Key Module Components}
+\begin{itemize}
+    \item \textbf{Providers}: Located at the root level to avoid confusion with route paths. These provide global functionality like TanStack Query and Realtime event handling.
+    \item \textbf{Config}: Centralizes domain definitions using TypeScript and Zod. This acts as the "Single Source of Truth" for data structures.
+    \item \textbf{Data-Access}:
+    \begin{itemize}
+        \item \textbf{Interfaces}: Define the contract for API operations (Dependency Inversion).
+        \item \textbf{Concrete Classes}: Implementations for \texttt{Mock} (localStorage) and \texttt{Real} (REST API) environments.
+        \item \textbf{Queries}: Encapsulate TanStack Query hooks to manage caching and server-state.
+    \end{itemize}
+    \item \textbf{Components}: Functional UI parts that consume data through feature-specific hooks.
+\end{itemize}
+
+\section{SOLID Principles Application}
+
+\subsection{S - Single Responsibility Principle (SRP)}
+Each module and file has a dedicated responsibility. For instance, \texttt{*.api.ts} handles only the network layer, while \texttt{*.queries.ts} manages server state and caching.
+
+\subsection{O - Open/Closed Principle (OCP)}
+The system is open for extension but closed for modification through \textbf{Interface-Driven API}. New environments can be added by creating new classes that implement the existing API interface without touching UI logic.
+
+\subsection{L - Liskov Substitution Principle (LSP)}
+Our Mock/Real API pattern is a direct implementation of LSP. Both \texttt{MockMenuApi} and \texttt{RealMenuApi} strictly implement \texttt{IMenuApi}, allowing them to be substituted at runtime without affecting the application's correctness.
+
+\subsection{I - Interface Segregation Principle (ISP)}
+We use \textbf{Feature-Segregated Interfaces} (\texttt{IAuthApi}, \texttt{IMenuApi}, etc.). Features only depend on the interfaces they actually use, reducing coupling and cognitive load.
+
+\subsection{D - Dependency Inversion Principle (DIP)}
+High-level modules depend on \textbf{Abstractions} (Interfaces), not low-level details. Pages and components use hooks that depend on the API Interface, while the specific implementation is injected at the API level.
+
+\end{document}

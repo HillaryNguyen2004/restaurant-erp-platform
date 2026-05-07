@@ -30,6 +30,10 @@
     "@prisma/client": "^7.8.0",
     "dotenv": "^17.4.2",
     "fastify": "^5.8.5",
+<<<<<<< HEAD
+=======
+    "kafkajs": "^2.2.4",
+>>>>>>> 407dde90 (fix:: add latest features)
     "pg": "^8.20.0",
     "prisma": "^7.8.0",
     "reflect-metadata": "^0.2.2",
