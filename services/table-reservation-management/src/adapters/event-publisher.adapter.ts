@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-import { Injectable, Logger } from '@nestjs/common';
-=======
 import {
   Injectable,
   Logger,
@@ -9,61 +6,12 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { Kafka, Producer } from 'kafkajs';
->>>>>>> 407dde90 (fix:: add latest features)
 import { DiningSession } from '../domains/entities/dining-session.entity';
 import { Reservation } from '../domains/entities/reservation.entity';
 import { RestaurantTable } from '../domains/entities/restaurant-table.entity';
 import { IEventPublisher } from '../ports/event-publisher.interface';
 
 @Injectable()
-<<<<<<< HEAD
-export class EventPublisherAdapter implements IEventPublisher {
-  private readonly logger = new Logger(EventPublisherAdapter.name);
-
-  publishReservationCreated(reservation: Reservation): Promise<void> {
-    this.logger.log(`reservation.created: ${reservation.reservationId}`);
-    return Promise.resolve();
-  }
-
-  publishReservationExtended(reservation: Reservation): Promise<void> {
-    this.logger.log(`reservation.extended: ${reservation.reservationId}`);
-    return Promise.resolve();
-  }
-
-  publishReservationCancelled(reservation: Reservation): Promise<void> {
-    this.logger.log(`reservation.cancelled: ${reservation.reservationId}`);
-    return Promise.resolve();
-  }
-
-  publishReservationCheckedIn(reservation: Reservation): Promise<void> {
-    this.logger.log(`reservation.checked-in: ${reservation.reservationId}`);
-    return Promise.resolve();
-  }
-
-  publishReservationNoShow(reservation: Reservation): Promise<void> {
-    this.logger.log(`reservation.no-show: ${reservation.reservationId}`);
-    return Promise.resolve();
-  }
-
-  publishTableStateChanged(table: RestaurantTable): Promise<void> {
-    this.logger.log(`table.state-changed: ${table.tableId}`);
-    return Promise.resolve();
-  }
-
-  publishDiningSessionStarted(session: DiningSession): Promise<void> {
-    this.logger.log(`dining-session.started: ${session.sessionId}`);
-    return Promise.resolve();
-  }
-
-  publishDiningSessionExtended(session: DiningSession): Promise<void> {
-    this.logger.log(`dining-session.extended: ${session.sessionId}`);
-    return Promise.resolve();
-  }
-
-  publishDiningSessionFinished(session: DiningSession): Promise<void> {
-    this.logger.log(`dining-session.finished: ${session.sessionId}`);
-    return Promise.resolve();
-=======
 export class EventPublisherAdapter
   implements IEventPublisher, OnModuleInit, OnModuleDestroy
 {
@@ -203,6 +151,5 @@ export class EventPublisherAdapter
     });
 
     this.logger.log(`published ${eventType}: ${aggregateId}`);
->>>>>>> 407dde90 (fix:: add latest features)
   }
 }
