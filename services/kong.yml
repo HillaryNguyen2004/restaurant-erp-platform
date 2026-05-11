@@ -24,7 +24,7 @@ services:
       - name: order-menu-route
         paths:
           - /order-menu
-        strip_path: true
+        strip_path: false
 
   - name: kitchen-operation-service
     url: http://kitchen-operation-service:8080
@@ -32,4 +32,4 @@ services:
       - name: kitchen-operation-route
         paths:
           - /kitchen-operation
-        strip_path: true
+        strip_path: false
