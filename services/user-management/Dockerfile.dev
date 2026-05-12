@@ -1,35 +1,21 @@
-FROM node:22-slim AS base
+FROM node:22-slim
 
-# 1. Setup pnpm
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV NODE_ENV=development
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCHPACK_POLLING=true
+
 RUN corepack enable
 
 WORKDIR /app
 
-# 2. Dependencies Stage
-FROM base AS deps
-# Copy only the files needed to install dependencies
-# In v11, allowBuilds is in pnpm-workspace.yaml, so it's required here
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 
-# Use a cache mount for the pnpm store to speed up subsequent builds
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile
 
-# 3. Build Stage
-FROM deps AS builder
 COPY . .
-RUN pnpm run build
-
-# 4. Production Stage
-FROM base AS runner
-ENV NODE_ENV=production
-
-# Copy only what is needed to run the app
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3000
-CMD [ "node", "dist/index.js" ]
+CMD ["pnpm", "run", "start:dev"]

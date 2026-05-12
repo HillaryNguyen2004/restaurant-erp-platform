@@ -1,47 +1,26 @@
-# syntax=docker/dockerfile:1
-FROM node:22-slim AS base
+FROM node:22-slim
 
-# Setup pnpm and system dependencies
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+ENV NODE_ENV=development
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCHPACK_POLLING=true
 
-# Prisma needs openssl to run
+RUN corepack enable
 RUN apt-get update -y && apt-get install -y openssl
 
 WORKDIR /app
 
-# --- Dependencies Stage ---
-FROM base AS deps
-# Copy lockfile, workspace (for v11 allowBuilds), and schema
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY src/prisma ./prisma/
+COPY prisma.config.ts ./
+COPY src/prisma ./src/prisma/
 
-# Install dependencies (respecting v11 allowBuilds)
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile
 
-# --- Build Stage ---
-FROM deps AS builder
-COPY . .
-
-# Generate Prisma Client (uses a dummy URL so it doesn't fail if DB is offline)
 RUN DATABASE_URL="postgresql://localhost:5432/placeholder" pnpm prisma generate
 
-# Build your TypeScript/app code
-RUN pnpm run build
+COPY . .
 
-# --- Production Stage ---
-FROM base AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-
-# Copy only the necessary files from builder
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
-
-# The app will look for DATABASE_URL at runtime
 EXPOSE 3000
-CMD [ "node", "dist/index.js" ]
+CMD ["pnpm", "run", "start:dev"]
