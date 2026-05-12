@@ -1,4 +1,4 @@
-package com.hcmut.kitchenoperation.config;
+package com.hcmut.ordermenu.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -125,7 +125,7 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of(
                         400,
                         "Bad Request",
-                        "Invalid request body",
+                        defaultMessage(ex.getMostSpecificCause().getMessage(), "Invalid request body"),
                         request.getRequestURI()
                 ));
     }
