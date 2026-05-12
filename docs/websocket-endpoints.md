@@ -4,6 +4,35 @@ Scope: KDS + order-menu only.
 
 Main decision: keep commands and initial reads as REST. Add WebSocket only for server-pushed changes that another screen must see without refresh.
 
+## WebSocket Heartbeat
+
+All WebSocket clients should send a heartbeat message every 25 seconds to keep the connection alive through Kong/API gateway and other proxies.
+
+Client heartbeat message:
+
+```json
+{"type":"ping"}
+```
+
+Server heartbeat response:
+
+```json
+{"type":"pong"}
+```
+
+Rules:
+- The heartbeat message must exactly match {"type":"ping"}.
+- The server replies with {"type":"pong"}.
+- Client commands should not be sent through WebSocket.
+- Unknown client messages are ignored by the server.
+- If the socket closes, frontend should reconnect automatically.
+
+Frontend behavior:
+- Ignore {"type":"pong"} messages.
+- Process backend events using eventType.
+- Use REST for initial reads and commands.
+
+
 ## Really Need WebSocket
 
 ### 1. KDS ticket stream
@@ -81,7 +110,10 @@ REST stays:
 ### KDS
 
 - `POST /kitchen-operation/kitchen/courses/fire`
-  - Keep REST. Result creates/updates tickets; ticket stream can push those changes.
+  - Deprecated or optional.
+  - Do not use this for chef "start cooking".
+  - Chef start/complete actions should use `PATCH /kitchen-operation/kitchen/tickets/{ticketId}/status`.
+  - Keep only if delayed course firing is needed later.
 - `GET /kitchen-operation/kitchen/tickets/{ticketId}`
   - Keep REST for detail fetch.
 - `GET /kitchen-operation/kitchen/stations`
