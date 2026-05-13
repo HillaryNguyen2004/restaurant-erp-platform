@@ -11,11 +11,21 @@ export const tableKeys = {
   orders: (id: string) => [...tableKeys.all, 'orders', id] as const,
 }
 
-export const useTables = () => {
+type UseTablesOptions = {
+  /**
+   * Whether to refetch the table list on a 5s interval.
+   * Set to `false` when a WebSocket-driven realtime subscription
+   * (see `useTablesRealtime`) is active to avoid redundant polling.
+   * Defaults to `true` for backwards compatibility.
+   */
+  enablePolling?: boolean
+}
+
+export const useTables = ({ enablePolling = true }: UseTablesOptions = {}) => {
   return useQuery({
     queryKey: tableKeys.list(),
     queryFn: () => tableApi.getAll(),
-    refetchInterval: 5000,
+    refetchInterval: enablePolling ? 5000 : false,
   })
 }
 

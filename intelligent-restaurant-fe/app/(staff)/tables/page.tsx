@@ -10,6 +10,7 @@ import {
   TableStatus,
 } from "@/features/table-management/config/table.config"
 import { useStartSession, useTables, useUpdateTableStatus } from "@/features/table-management/data-access/table.queries"
+import { useTablesRealtime } from "@/providers/realtime-provider"
 import { LogOut } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -20,9 +21,15 @@ export default function TablesPage() {
   const [selectedTable, setSelectedTable] = useState<Table | null>(null)
   const [readyTables, setReadyTables] = useState<Set<string>>(new Set())
 
-  const { data: tables, isLoading } = useTables()
+  // Disable REST polling; table state is streamed via WebSocket below.
+  const { data: tables, isLoading } = useTables({ enablePolling: false })
   const startSessionMutation = useStartSession()
   const statusMutation = useUpdateTableStatus()
+
+  // Open a realtime channel for restaurant-wide table state updates.
+  // The RealtimeProvider invalidates the `["tables"]` query on relevant
+  // events (table.state-changed, dining-session.*), keeping the grid live.
+  useTablesRealtime()
 
   // Listen for realtime order updates
   useEffect(() => {

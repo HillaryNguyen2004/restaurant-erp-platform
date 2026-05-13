@@ -79,6 +79,10 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
             queryClient.invalidateQueries({ queryKey: ["tables"] })
           }, 1200)
           break
+        case "table.state-changed":
+        case "dining-session.started":
+        case "dining-session.extended":
+        case "dining-session.finished":
         case "TABLE_STATUS_CHANGED":
           queryClient.invalidateQueries({ queryKey: ["tables"] })
           break
@@ -226,4 +230,23 @@ export function useOrderSessionRealtime(
 
 export function useMenuRealtime() {
   useRealtimeSocket("/order-menu/ws/menu")
+}
+
+/**
+ * Subscribe to the restaurant-wide table state stream.
+ *
+ * Used by screens that display the full table grid (e.g. /billing, /tables)
+ * so they can drop REST polling and stay in sync via server push.
+ *
+ * Expected backend endpoint: `WS /table-reservation/ws/tables`
+ * Expected event types (from the table-reservation service):
+ *   - `table.state-changed`
+ *   - `dining-session.started`
+ *   - `dining-session.extended`
+ *   - `dining-session.finished`
+ *
+ * All of the above invalidate the `["tables"]` query in `processEvent`.
+ */
+export function useTablesRealtime() {
+  useRealtimeSocket("/table-reservation/ws/tables")
 }

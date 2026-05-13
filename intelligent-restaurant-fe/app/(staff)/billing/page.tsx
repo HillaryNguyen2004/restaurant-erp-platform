@@ -1,6 +1,6 @@
 "use client"
 
-import { useRealtime } from "@/providers/realtime-provider"
+import { useTablesRealtime } from "@/providers/realtime-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,7 +18,13 @@ export default function BillingPage() {
   const { logout } = useAuth()
 
   const [selectedTable, setSelectedTable] = useState<Table | null>(null)
-  const { data: tables, isLoading } = useTables()
+  // Disable REST polling; table state is streamed via WebSocket below.
+  const { data: tables, isLoading } = useTables({ enablePolling: false })
+
+  // Open a realtime channel for restaurant-wide table state updates.
+  // The RealtimeProvider invalidates the `["tables"]` query on relevant
+  // events (table.state-changed, dining-session.*), keeping the grid live.
+  useTablesRealtime()
 
   if (isLoading) return <div className="p-8 text-center">Loading Billing...</div>
 

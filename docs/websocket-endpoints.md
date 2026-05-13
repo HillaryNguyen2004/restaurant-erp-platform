@@ -83,9 +83,40 @@ REST stays:
 - `PUT /order-menu/order-sessions/{orderSessionId}/orders/{orderId}/cancel`
 - `PUT /order-menu/order-sessions/{orderSessionId}/orders/{orderId}/items/{itemId}`
 
+### 3. Table state stream
+
+Proposed endpoint:
+- `WS /table-reservation/ws/tables`
+
+Subscribe by:
+- nothing (restaurant-wide broadcast)
+
+Events:
+- `table.state-changed`
+- `dining-session.started`
+- `dining-session.extended`
+- `dining-session.finished`
+
+Why:
+- Cashier billing screen (`/billing`) and table map (`/tables`) both render
+  the full table grid and must stay in sync with state changes made by
+  other clients (servers opening tables, checkouts, reservations).
+- Frontend previously polled `GET /table-reservation/tables` every 5s.
+  That poll is dropped on `/billing` in favour of this stream.
+- The `table-reservation-management` service already publishes these
+  events to Kafka; this endpoint is a thin Kafka → WS bridge
+  (`TableWsGateway` + `TableEventsKafkaConsumer`).
+
+REST stays:
+- `GET /table-reservation/tables`
+- `GET /table-reservation/tables/{tableId}`
+- `PATCH /table-reservation/tables/{tableId}/{available|occupied|reserved|out-of-order}`
+- `POST /table-reservation/dining-sessions`
+- `PATCH /table-reservation/dining-sessions/table/{tableId}/checkout`
+
 ## Optional WebSocket
 
-### 3. Menu availability stream
+### 4. Menu availability stream
 
 Proposed endpoint:
 - `WS /order-menu/ws/menu`
@@ -143,4 +174,19 @@ REST stays:
 - `NEW_TICKET_CREATED` -> `kitchen.ticket.created`
 - `ORDER_STATUS_UPDATED` -> `kitchen.ticket.status.changed` or `order.status.changed`
 - `NEW_ORDER_PLACED` -> `order.placed`
+- `TABLE_STATUS_CHANGED` -> `table.state-changed`
+
+## Kong Routing
+
+Kong (`services/kong.yml`) proxies WebSocket upgrade requests over the same
+HTTP routes as REST. Current mapping relevant to WebSockets:
+
+- `/kitchen-operation/*` -> `kitchen-operation-service:8004` (strip_path: false)
+- `/order-menu/*`        -> `order-menu-service:8003`        (strip_path: false)
+- `/table-reservation/*` -> `table-reservation-management-service:8002` (strip_path: true)
+
+Because `/table-reservation` is configured with `strip_path: true`, the
+backend receives `/ws/tables` (not `/table-reservation/ws/tables`) and
+registers the Fastify route at that path. The frontend still connects to
+`ws://<host>/table-reservation/ws/tables` through Kong.
 

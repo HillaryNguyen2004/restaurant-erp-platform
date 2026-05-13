@@ -32,6 +32,8 @@ import { TableRepositoryImpl } from './repositories/table/table.repository.impl'
 import { DiningSessionRepositoryImpl } from './repositories/dining-session/dining-session.repository.impl';
 
 import { EventPublisherAdapter } from './adapters/event-publisher.adapter';
+import { TableEventsKafkaConsumer } from './adapters/table-events-kafka.consumer';
+import { TableWsGateway } from './adapters/table-ws.gateway';
 
 import { AvailabilityServiceImpl } from './services/availability/availability.service.impl';
 import { DiningSessionServiceImpl } from './services/dining-session/dining-session.service.impl';
@@ -123,6 +125,10 @@ import { DiningSessionMapper } from './mappers/dining-session/dining-session-map
       provide: DINING_SESSION_SERVICE,
       useClass: DiningSessionServiceImpl,
     },
+
+    // --- WebSocket gateway + Kafka→WS bridge (used by /ws/tables) ---
+    TableWsGateway,
+    TableEventsKafkaConsumer,
   ],
 
   exports: [
