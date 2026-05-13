@@ -9,7 +9,7 @@ export type PlaceOrderItemRequest = {
 
 export interface IOrderApi {
   getOrdersBySession(sessionId: string): Promise<Order[]>;
-  getSessionByTable(tableId: string): Promise<OrderSession>;
+  getSessionByTable(tableId: string): Promise<OrderSession | null>;
   placeOrder(sessionId: string, items: PlaceOrderItemRequest[]): Promise<Order>;
   cancelOrder(sessionId: string, orderId: string, reason: string): Promise<void>;
 }
@@ -24,8 +24,9 @@ class RealOrderApi implements IOrderApi {
     return data.orders || [];
   }
 
-  async getSessionByTable(tableId: string): Promise<OrderSession> {
+  async getSessionByTable(tableId: string): Promise<OrderSession | null> {
     const response = await fetch(`${API_URL}/order-sessions/table/${tableId}`);
+    if (response.status === 404) return null;
     if (!response.ok) throw new Error("No active session for table");
     return response.json();
   }

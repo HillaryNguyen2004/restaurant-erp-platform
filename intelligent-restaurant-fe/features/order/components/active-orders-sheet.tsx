@@ -3,16 +3,42 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ClipboardList, Clock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getOrderSessionId } from '../config/order.config';
 import { useOrdersBySession, useSessionByTable } from '../data-access/order.queries';
 import { useAuth } from '@/features/auth/components/auth-provider';
+import { useOrderSessionRealtime } from '@/providers/realtime-provider';
 
 export function ActiveOrdersSheet() {
   const { user } = useAuth();
+  const [open, setOpen] = useState(false);
   const { data: session } = useSessionByTable(user?.id);
-  const sessionId = session?.orderSessionId;
+  const sessionId = getOrderSessionId(session);
+  useOrderSessionRealtime(sessionId || undefined, user?.id);
   const { data: orders, isLoading } = useOrdersBySession(sessionId || '');
 
   const tableOrders = orders || [];
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        event: string;
+        data?: { orderSessionId?: string; tableId?: string };
+      }>;
+      const eventName = customEvent.detail.event;
+      const data = customEvent.detail.data;
+
+      if (
+        eventName === 'order.session.closed' &&
+        (data?.orderSessionId === sessionId || data?.tableId === user?.id)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener('realtime_event', handler);
+    return () => window.removeEventListener('realtime_event', handler);
+  }, [sessionId, user?.id]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -26,7 +52,7 @@ export function ActiveOrdersSheet() {
   };
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" className="gap-2">
           <ClipboardList className="w-4 h-4" />

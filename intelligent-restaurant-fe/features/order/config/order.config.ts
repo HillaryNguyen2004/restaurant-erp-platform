@@ -46,6 +46,6 @@ export const OrderSessionSchema = z.object({
 })
 export type OrderSession = z.infer<typeof OrderSessionSchema>
 
-export function getOrderSessionId(session: OrderSession | undefined): string {
+export function getOrderSessionId(session: OrderSession | null | undefined): string {
   return session?.sessionId ?? session?.orderSessionId ?? ""
 }

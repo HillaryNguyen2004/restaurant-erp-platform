@@ -9,6 +9,7 @@ import com.hcmut.kitchenoperation.port.IClock;
 import com.hcmut.kitchenoperation.port.IEventPublisher;
 import com.hcmut.kitchenoperation.port.INotificationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -16,9 +17,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TicketService {
     private final IKitchenTicketRepository ticketRepository;
     private final TicketPriorityCalculator priorityCalculator;
@@ -63,7 +66,13 @@ public class TicketService {
         eventPublisher.publish(event);
         notificationService.notifyStation(updated.getStationId(), event);
 
-        checkAndTriggerAlert(updated);
+        CompletableFuture.runAsync(() -> {
+            try {
+                checkAndTriggerAlert(updated);
+            } catch (RuntimeException ex) {
+                log.warn("ticket-alert-evaluation-failed ticketId={}", updated.getId(), ex);
+            }
+        });
         return updated;
     }
 

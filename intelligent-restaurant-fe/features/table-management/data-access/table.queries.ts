@@ -15,6 +15,7 @@ export const useTables = () => {
   return useQuery({
     queryKey: tableKeys.list(),
     queryFn: () => tableApi.getAll(),
+    refetchInterval: 5000,
   })
 }
 
@@ -43,11 +44,13 @@ export const useUpdateTableStatus = () => {
 
 export const useStartSession = () => {
   const queryClient = useQueryClient()
+  const { emit } = useRealtime()
 
   return useMutation({
     mutationFn: (tableId: string) => tableApi.startSession(tableId),
-    onSuccess: () => {
+    onSuccess: (_, tableId) => {
       queryClient.invalidateQueries({ queryKey: tableKeys.all })
+      emit("TABLE_STATUS_CHANGED", { tableId, status: "OCCUPIED" })
       toast.success("Session started successfully")
     },
     onError: (error) => {

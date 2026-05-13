@@ -12,7 +12,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/features/auth/components/auth-provider"
 import { MenuItem } from "@/features/menu/config/menu.config"
-import { Order } from "@/features/order/config/order.config"
+import { getOrderSessionId, Order } from "@/features/order/config/order.config"
+import { useSessionByTable } from "@/features/order/data-access/order.queries"
+import { useOrderSessionRealtime } from "@/providers/realtime-provider"
 import {
   CheckCircle,
   Minus,
@@ -61,6 +63,9 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
   }, [table?.tableId])
 
   const { data: orders = [], isLoading: loadingOrders } = useTableOrders(table?.tableId)
+  const { data: orderSession } = useSessionByTable(table?.tableId)
+  const orderSessionId = getOrderSessionId(orderSession)
+  useOrderSessionRealtime(orderSessionId || undefined, table?.tableId)
   const { data: menuItems = [] } = useGetAllMenuItems()
   const { data: categories = [] } = useCategories()
 
@@ -125,6 +130,29 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
       onSuccess: () => onClose()
     })
   }
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        event: string
+        data?: { orderSessionId?: string; tableId?: string }
+      }>
+      const eventName = customEvent.detail.event
+      const data = customEvent.detail.data
+
+      if (
+        eventName === "order.session.closed" &&
+        (data?.orderSessionId === orderSessionId ||
+          data?.tableId === table?.tableId)
+      ) {
+        setCart([])
+        onClose()
+      }
+    }
+
+    window.addEventListener("realtime_event", handler)
+    return () => window.removeEventListener("realtime_event", handler)
+  }, [onClose, orderSessionId, table?.tableId])
 
   const handlePrint = () => {
     const allItems = orders.flatMap((o) => o.items)

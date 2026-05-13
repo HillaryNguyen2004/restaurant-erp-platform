@@ -12,7 +12,7 @@ import { MenuCard } from '@/features/menu/components/menu-card';
 import { MenuItem } from '@/features/menu/config/menu.config';
 import { useGetAllMenuItems, useCategories } from '@/features/menu/data-access/menu.queries';
 import { ActiveOrdersSheet } from '@/features/order/components/active-orders-sheet';
-import { OrderItem } from '@/features/order/config/order.config';
+import { getOrderSessionId, OrderItem } from '@/features/order/config/order.config';
 import { usePlaceOrder, useSessionByTable } from '@/features/order/data-access/order.queries';
 import { useRealtime } from '@/providers/realtime-provider';
 import { Loader2, LogOut, ShoppingCart } from 'lucide-react';
@@ -31,7 +31,7 @@ export default function MenuPage() {
   
   // For customers, we assume they are at a table and have a session
   const { data: session, isLoading: isLoadingSession } = useSessionByTable(user?.id);
-  const sessionId = session?.orderSessionId;
+  const sessionId = getOrderSessionId(session);
   const placeOrderMutation = usePlaceOrder();
 
   const handlePlaceOrder = () => {

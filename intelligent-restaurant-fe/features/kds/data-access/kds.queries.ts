@@ -1,7 +1,7 @@
 import { useRealtime } from "@/providers/realtime-provider"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { KitchenTicketStatus } from "../config/kds.config"
+import { KitchenTicket, KitchenTicketStatus } from "../config/kds.config"
 import { kdsApi } from "../data-access/kds.api"
 
 export const kdsKeys = {
@@ -42,6 +42,22 @@ export const useUpdateTicketStatus = () => {
       status: KitchenTicketStatus
       changedByUserId: string
     }) => kdsApi.updateStatus(ticketId, status, changedByUserId),
+    onMutate: async ({ ticketId, status }) => {
+      await queryClient.cancelQueries({ queryKey: kdsKeys.tickets() })
+      const previousTickets = queryClient.getQueriesData<KitchenTicket[]>({
+        queryKey: kdsKeys.tickets(),
+      })
+
+      queryClient.setQueriesData<KitchenTicket[]>(
+        { queryKey: kdsKeys.tickets() },
+        (current) =>
+          current?.map((ticket) =>
+            ticket.ticketId === ticketId ? { ...ticket, status } : ticket
+          )
+      )
+
+      return { previousTickets }
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: kdsKeys.tickets() })
       emit("ORDER_STATUS_UPDATED", {
@@ -50,6 +66,12 @@ export const useUpdateTicketStatus = () => {
         status: data.status,
       })
       toast.success(`Ticket updated to ${data.status}`)
+    },
+    onError: (_error, _variables, context) => {
+      context?.previousTickets.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data)
+      })
+      toast.error("Failed to update ticket")
     },
   })
 }

@@ -24,6 +24,7 @@ import {
   useTickets,
   useUpdateTicketStatus,
 } from "@/features/kds/data-access/kds.queries"
+import { useKdsStationRealtime } from "@/providers/realtime-provider"
 import { AlertTriangle, ChefHat, Clock, LogOut } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
@@ -82,6 +83,7 @@ export default function KDSPage() {
   const selectedStation = stations.find(
     (station) => station.stationId === selectedStationId
   )
+  useKdsStationRealtime(selectedStation?.stationId)
   const {
     data: tickets,
     isError: isTicketsError,

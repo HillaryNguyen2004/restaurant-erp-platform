@@ -21,6 +21,7 @@ export const useSessionByTable = (tableId: string | undefined) => {
     queryKey: orderKeys.tableSession(tableId || ''),
     queryFn: () => orderApi.getSessionByTable(tableId!),
     enabled: !!tableId,
+    retry: false,
   })
 }
 
