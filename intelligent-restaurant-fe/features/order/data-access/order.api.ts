@@ -1,10 +1,16 @@
 import { CONFIG } from '@/lib/config';
-import { Order, OrderStatus } from '../config/order.config';
+import { Order, OrderSession } from '../config/order.config';
+
+export type PlaceOrderItemRequest = {
+  menuItemId: string
+  quantity: number
+  specialInstructions?: string
+}
 
 export interface IOrderApi {
   getOrdersBySession(sessionId: string): Promise<Order[]>;
-  getSessionByTable(tableId: string): Promise<any>;
-  placeOrder(sessionId: string, items: any[]): Promise<Order>;
+  getSessionByTable(tableId: string): Promise<OrderSession>;
+  placeOrder(sessionId: string, items: PlaceOrderItemRequest[]): Promise<Order>;
   cancelOrder(sessionId: string, orderId: string, reason: string): Promise<void>;
 }
 
@@ -18,13 +24,13 @@ class RealOrderApi implements IOrderApi {
     return data.orders || [];
   }
 
-  async getSessionByTable(tableId: string): Promise<any> {
+  async getSessionByTable(tableId: string): Promise<OrderSession> {
     const response = await fetch(`${API_URL}/order-sessions/table/${tableId}`);
     if (!response.ok) throw new Error("No active session for table");
     return response.json();
   }
 
-  async placeOrder(sessionId: string, items: any[]): Promise<Order> {
+  async placeOrder(sessionId: string, items: PlaceOrderItemRequest[]): Promise<Order> {
     const response = await fetch(`${API_URL}/order-sessions/${sessionId}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

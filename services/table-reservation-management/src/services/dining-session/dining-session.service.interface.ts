@@ -17,5 +17,7 @@ export interface IDiningSessionService {
 
   finishSession(sessionId: string): Promise<void>;
 
+  checkoutActiveSessionByTable(tableId: string): Promise<void>;
+
   getRemainingServiceTime(sessionId: string): Promise<ServiceTimeResponseDto>;
 }

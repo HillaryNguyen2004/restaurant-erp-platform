@@ -288,7 +288,8 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
                   {order.items.map((item) => (
                     <li key={item.itemId} className="flex justify-between text-sm">
                       <span className="text-slate-700">
-                        {item.menuItemName}
+                        {menuItems.find((m) => m.itemId === item.menuItemId)?.name || item.menuItemName ||
+                          "Unknown Item"}
                       </span>
                       <span className="text-slate-400">
                         ×{item.quantity} · $

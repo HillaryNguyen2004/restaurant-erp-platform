@@ -2,7 +2,7 @@ import { useRealtime } from "@/providers/realtime-provider"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { TableStatus } from "../config/table.config"
-import { tableApi } from "../data-access/table.api"
+import { tableApi, TableOrderItemRequest } from "../data-access/table.api"
 
 export const tableKeys = {
   all: ['tables'] as const,
@@ -69,7 +69,7 @@ export const usePlaceOrder = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ tableId, items }: { tableId: string; items: any[] }) => 
+    mutationFn: ({ tableId, items }: { tableId: string; items: TableOrderItemRequest[] }) => 
       tableApi.placeOrder(tableId, items),
     onSuccess: (_, { tableId }) => {
       queryClient.invalidateQueries({ queryKey: tableKeys.orders(tableId) })
@@ -80,11 +80,14 @@ export const usePlaceOrder = () => {
 
 export const useCheckoutTable = () => {
   const queryClient = useQueryClient()
+  const { emit } = useRealtime()
 
   return useMutation({
     mutationFn: (tableId: string) => tableApi.checkout(tableId),
-    onSuccess: () => {
+    onSuccess: (_, tableId) => {
       queryClient.invalidateQueries({ queryKey: tableKeys.all })
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
+      emit("TABLE_STATUS_CHANGED", { tableId, status: "FREE" })
       toast.success("Table checked out!")
     },
   })

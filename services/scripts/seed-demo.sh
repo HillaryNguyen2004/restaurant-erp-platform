@@ -110,6 +110,41 @@ ensure_item() {
     | node -e "const x=JSON.parse(require('fs').readFileSync(0,'utf8')); console.log(x.itemId || x.id)"
 }
 
+active_order_session_id_by_table() {
+  local table_id="$1"
+
+  curl -sS "$KONG_URL/order-menu/order-sessions/table/$table_id" \
+    | node -e "const raw=require('fs').readFileSync(0,'utf8')||'{}'; try { const x=JSON.parse(raw); console.log(x.sessionId || x.id || '') } catch { console.log('') }"
+}
+
+open_order_session() {
+  local table_id="$1"
+  local session
+  local session_id
+
+  session="$(json_post "/order-menu/order-sessions" "{\"tableId\":\"$table_id\"}")"
+  session_id="$(node -e "const raw=process.argv[1]||'{}'; try { const x=JSON.parse(raw); console.log(x.sessionId || x.id || '') } catch { console.log('') }" "$session")"
+  if [[ -z "$session_id" ]]; then
+    echo "Failed to create order session for table $table_id. Response: $session" >&2
+    exit 1
+  fi
+
+  echo "$session_id"
+}
+
+ensure_order_session() {
+  local table_id="$1"
+  local session_id
+
+  session_id="$(active_order_session_id_by_table "$table_id")"
+  if [[ -n "$session_id" ]]; then
+    echo "$session_id"
+    return
+  fi
+
+  open_order_session "$table_id"
+}
+
 seed_tables() {
   docker exec -i "$POSTGRES_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<'SQL' >/dev/null
 INSERT INTO table_reservation.restaurant_tables
@@ -189,20 +224,44 @@ ON CONFLICT (session_id) DO UPDATE SET
 SQL
 }
 
+reset_order_session_state() {
+  docker exec -i "$POSTGRES_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<'SQL' >/dev/null
+UPDATE order_menu.order_sessions os
+SET status = 'CLOSED',
+    end_time = COALESCE(os.end_time, now())
+WHERE os.status = 'ACTIVE'
+  AND (
+    os.table_id IN (
+      '44444444-4444-4444-8444-444444444444',
+      '99999999-9999-4999-8999-999999999999',
+      'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      '18181818-1818-4181-8181-181818181818'
+    )
+    OR NOT EXISTS (
+      SELECT 1
+      FROM table_reservation.restaurant_tables t
+      WHERE t.table_id = os.table_id::text
+        AND t.status = 'OCCUPIED'
+    )
+  );
+SQL
+}
+
+ensure_live_order_sessions() {
+  ensure_order_session "44444444-4444-4444-8444-444444444444" >/dev/null
+  ensure_order_session "99999999-9999-4999-8999-999999999999" >/dev/null
+  ensure_order_session "dddddddd-dddd-4ddd-8ddd-dddddddddddd" >/dev/null
+  ensure_order_session "18181818-1818-4181-8181-181818181818" >/dev/null
+}
+
 place_demo_order() {
   local table_id="$1"
   local item_id="$2"
   local quantity="$3"
   local instructions="$4"
-  local session
   local session_id
 
-  session="$(json_post "/order-menu/order-sessions" "{\"tableId\":\"$table_id\"}")"
-  session_id="$(node -e "const raw=process.argv[1]||'{}'; const x=JSON.parse(raw); console.log(x.sessionId || x.id || '')" "$session")"
-  if [[ -z "$session_id" ]]; then
-    echo "Failed to create order session for table $table_id. Response: $session" >&2
-    exit 1
-  fi
+  session_id="$(ensure_order_session "$table_id")"
 
   json_post "/order-menu/order-sessions/$session_id/orders" \
     "{\"items\":[{\"menuItemId\":\"$item_id\",\"quantity\":$quantity,\"modifiers\":[],\"specialInstructions\":\"$instructions\"}]}" >/dev/null
@@ -292,6 +351,8 @@ ensure_item "Family Combo" "Burger, ribs, wings, salad, and drinks" "$specials_i
 echo "Seeding tables..."
 seed_tables
 seed_reservations
+reset_order_session_state
+ensure_live_order_sessions
 
 if [[ "${SEED_DEMO_ORDERS:-true}" == "true" ]]; then
   echo "Creating live demo orders..."

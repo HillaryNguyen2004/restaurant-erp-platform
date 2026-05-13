@@ -7,7 +7,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/features/auth/components/auth-provider';
-import { kdsApi } from '@/features/kds/data-access/kds.api';
 import { ItemDialog } from '@/features/menu/components/item-dialog';
 import { MenuCard } from '@/features/menu/components/menu-card';
 import { MenuItem } from '@/features/menu/config/menu.config';
@@ -16,13 +15,11 @@ import { ActiveOrdersSheet } from '@/features/order/components/active-orders-she
 import { OrderItem } from '@/features/order/config/order.config';
 import { usePlaceOrder, useSessionByTable } from '@/features/order/data-access/order.queries';
 import { useRealtime } from '@/providers/realtime-provider';
-import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, LogOut, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 export default function MenuPage() {
-  const queryClient = useQueryClient();
   const { emit } = useRealtime();
   const { user, logout } = useAuth();
   const [cart, setCart] = useState<OrderItem[]>([]);

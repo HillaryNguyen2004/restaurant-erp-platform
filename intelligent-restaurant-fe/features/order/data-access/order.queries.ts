@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { orderApi } from "./order.api"
+import { orderApi, PlaceOrderItemRequest } from "./order.api"
 import { toast } from "sonner"
 
 export const orderKeys = {
@@ -28,7 +28,7 @@ export const usePlaceOrder = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ sessionId, items }: { sessionId: string; items: any[] }) => 
+    mutationFn: ({ sessionId, items }: { sessionId: string; items: PlaceOrderItemRequest[] }) => 
       orderApi.placeOrder(sessionId, items),
     onSuccess: (_, { sessionId }) => {
       queryClient.invalidateQueries({ queryKey: orderKeys.session(sessionId) })

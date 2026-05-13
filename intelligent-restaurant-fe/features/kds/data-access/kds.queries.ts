@@ -5,14 +5,25 @@ import { KitchenTicketStatus } from "../config/kds.config"
 import { kdsApi } from "../data-access/kds.api"
 
 export const kdsKeys = {
-  all: ['tickets'] as const,
-  list: (stationId: string) => [...kdsKeys.all, 'list', stationId] as const,
+  all: ["tickets"] as const,
+  stations: () => [...kdsKeys.all, "stations"] as const,
+  tickets: () => [...kdsKeys.all, "lists"] as const,
+  list: (stationId: string) => [...kdsKeys.tickets(), "list", stationId] as const,
 }
 
-export const useTickets = (stationId: string = 'main') => {
+export const useStations = () => {
   return useQuery({
-    queryKey: kdsKeys.list(stationId),
-    queryFn: () => kdsApi.getTickets(stationId),
+    queryKey: kdsKeys.stations(),
+    queryFn: () => kdsApi.getStations(),
+    staleTime: 60000,
+  })
+}
+
+export const useTickets = (stationId?: string) => {
+  return useQuery({
+    queryKey: kdsKeys.list(stationId ?? "none"),
+    queryFn: () => kdsApi.getTickets(stationId!),
+    enabled: Boolean(stationId),
     refetchInterval: 10000,
   })
 }
@@ -22,10 +33,17 @@ export const useUpdateTicketStatus = () => {
   const { emit } = useRealtime()
 
   return useMutation({
-    mutationFn: ({ ticketId, status }: { ticketId: string; status: KitchenTicketStatus }) =>
-      kdsApi.updateStatus(ticketId, status),
+    mutationFn: ({
+      ticketId,
+      status,
+      changedByUserId,
+    }: {
+      ticketId: string
+      status: KitchenTicketStatus
+      changedByUserId: string
+    }) => kdsApi.updateStatus(ticketId, status, changedByUserId),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: kdsKeys.all })
+      queryClient.invalidateQueries({ queryKey: kdsKeys.tickets() })
       emit("ORDER_STATUS_UPDATED", {
         orderId: data.orderId,
         tableNumber: data.tableNumber,

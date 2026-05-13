@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { OrderItemSchema } from "@/features/order/config/order.config"
 
 export const KitchenTicketStatusSchema = z.enum([
   "PENDING",
@@ -28,6 +27,15 @@ export const KitchenTicketSchema = z.object({
   createdAt: z.string(),
 })
 export type KitchenTicket = z.infer<typeof KitchenTicketSchema>
+
+export const KitchenStationSchema = z.object({
+  stationId: z.string(),
+  name: z.string(),
+  stationType: z.string(),
+  supportedDishTypes: z.array(z.string()),
+  active: z.boolean(),
+})
+export type KitchenStation = z.infer<typeof KitchenStationSchema>
 
 export function getWaitingMinutes(createdAt: string): number {
   return Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000)

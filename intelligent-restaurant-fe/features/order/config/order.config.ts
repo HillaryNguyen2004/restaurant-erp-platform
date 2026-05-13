@@ -33,3 +33,19 @@ export const OrderSchema = z.object({
   placedAt: z.string(),
 })
 export type Order = z.infer<typeof OrderSchema>
+
+export const OrderSessionSchema = z.object({
+  sessionId: z.string(),
+  orderSessionId: z.string().optional(),
+  tableId: z.string(),
+  status: z.string(),
+  openedAt: z.string().optional(),
+  closedAt: z.string().nullable().optional(),
+  orders: z.array(OrderSchema).optional(),
+  subtotal: z.number().optional(),
+})
+export type OrderSession = z.infer<typeof OrderSessionSchema>
+
+export function getOrderSessionId(session: OrderSession | undefined): string {
+  return session?.sessionId ?? session?.orderSessionId ?? ""
+}
