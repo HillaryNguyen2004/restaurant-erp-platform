@@ -9,6 +9,21 @@ POSTGRES_USER="${POSTGRES_USER:-postgres}"
 json_post() {
   local path="$1"
   local body="$2"
+  local attempt=1
+  local max_attempts=5
+  local response
+  while [[ $attempt -le $max_attempts ]]; do
+    if response="$(curl -sS --fail-with-body -X POST "$KONG_URL$path" \
+      -H "Content-Type: application/json" \
+      -d "$body" 2>/dev/null)"; then
+      printf '%s' "$response"
+      return 0
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+  # Final attempt without --fail-with-body so callers still see a response body for
+  # legitimate 4xx responses (duplicates etc).
   curl -sS -X POST "$KONG_URL$path" \
     -H "Content-Type: application/json" \
     -d "$body"
@@ -59,6 +74,18 @@ ensure_station() {
 }
 
 menu_json() {
+  local attempt=1
+  local max_attempts=5
+  local response
+  while [[ $attempt -le $max_attempts ]]; do
+    if response="$(curl -sS --fail-with-body "$KONG_URL/order-menu/menu" 2>/dev/null)" \
+      && [[ -n "$response" ]]; then
+      printf '%s' "$response"
+      return 0
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+  done
   curl -sS "$KONG_URL/order-menu/menu"
 }
 

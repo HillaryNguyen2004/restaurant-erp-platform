@@ -3,7 +3,6 @@ package com.hcmut.kitchenoperation.repository.sql;
 import com.hcmut.kitchenoperation.config.SqlConnectionFactory;
 import com.hcmut.kitchenoperation.domain.model.KitchenStation;
 import com.hcmut.kitchenoperation.domain.repository.IKitchenStationRepository;
-import jakarta.annotation.PostConstruct;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Repository;
@@ -22,17 +21,6 @@ public class SqlKitchenStationRepository implements IKitchenStationRepository {
 
     public SqlKitchenStationRepository(SqlConnectionFactory connectionFactory) {
         this.connectionFactory = connectionFactory;
-    }
-
-    @PostConstruct
-    void seedStations() {
-        if (!findAll().isEmpty()) {
-            return;
-        }
-        save(new KitchenStation("STATION-GRILL", "Grill", "HOT", List.of("steak", "burger", "grill", "bbq", "main"), true));
-        save(new KitchenStation("STATION-SALAD", "Salad", "COLD", List.of("salad", "appetizer", "cold"), true));
-        save(new KitchenStation("STATION-DESSERT", "Dessert", "PASTRY", List.of("dessert", "cake", "ice-cream", "sweet"), true));
-        save(new KitchenStation("STATION-EXPEDITE", "Expedite", "GENERAL", List.of("other", "default", "main", "appetizer", "dessert"), true));
     }
 
     @Override
