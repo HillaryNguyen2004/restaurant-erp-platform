@@ -1,0 +1,35 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: user-management-service
+    url: http://user-management-service:3000
+    routes:
+      - name: user-management-route
+        paths:
+          - /user-management
+        strip_path: true
+
+  - name: table-reservation-management-service
+    url: http://table-reservation-management-service:3000
+    routes:
+      - name: table-reservation-management-route
+        paths:
+          - /table-reservation
+        strip_path: true
+
+  - name: order-menu-service
+    url: http://order-menu-service:8080
+    routes:
+      - name: order-menu-route
+        paths:
+          - /order-menu
+        strip_path: false
+
+  - name: kitchen-operation-service
+    url: http://kitchen-operation-service:8080
+    routes:
+      - name: kitchen-operation-route
+        paths:
+          - /kitchen-operation
+        strip_path: false

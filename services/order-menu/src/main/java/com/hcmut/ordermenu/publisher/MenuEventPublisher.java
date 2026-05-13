@@ -6,6 +6,7 @@ import com.hcmut.ordermenu.domain.events.menu.MenuItemAvailabilityChangedEvent;
 import com.hcmut.ordermenu.domain.events.menu.MenuItemCreatedEvent;
 import com.hcmut.ordermenu.domain.events.menu.MenuItemDeletedEvent;
 import com.hcmut.ordermenu.domain.events.menu.MenuItemUpdatedEvent;
+import com.hcmut.ordermenu.adapter.websocket.WebSocketNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MenuEventPublisher {
     private final DomainEventPublisher domainEventPublisher;
+    private final WebSocketNotificationService webSocketNotificationService;
 
     public void publishMenuItemCreated(MenuItem item) {
         domainEventPublisher.publish(new MenuItemCreatedEvent(item));
@@ -29,10 +31,14 @@ public class MenuEventPublisher {
     }
 
     public void publishMenuItemUnavailable(UUID itemId, String reason) {
-        domainEventPublisher.publish(new MenuItemAvailabilityChangedEvent(itemId, false, reason));
+        MenuItemAvailabilityChangedEvent event = new MenuItemAvailabilityChangedEvent(itemId, false, reason);
+        domainEventPublisher.publish(event);
+        webSocketNotificationService.notifyMenuEvent(event);
     }
 
     public void publishMenuItemAvailable(UUID itemId) {
-        domainEventPublisher.publish(new MenuItemAvailabilityChangedEvent(itemId, true, null));
+        MenuItemAvailabilityChangedEvent event = new MenuItemAvailabilityChangedEvent(itemId, true, null);
+        domainEventPublisher.publish(event);
+        webSocketNotificationService.notifyMenuEvent(event);
     }
 }

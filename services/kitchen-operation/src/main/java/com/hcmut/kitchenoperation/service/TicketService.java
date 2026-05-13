@@ -52,13 +52,16 @@ public class TicketService {
         ticket.setPriority(priorityCalculator.calculatePriority(ticket));
         KitchenTicket updated = ticketRepository.update(ticket);
 
-        eventPublisher.publish(new TicketStatusChangedEvent(
+        TicketStatusChangedEvent event = new TicketStatusChangedEvent(
                 updated.getId(),
                 updated.getOrderId(),
+                updated.getStationId(),
                 oldStatus,
                 updated.getStatus(),
                 userId
-        ));
+        );
+        eventPublisher.publish(event);
+        notificationService.notifyStation(updated.getStationId(), event);
 
         checkAndTriggerAlert(updated);
         return updated;
@@ -99,7 +102,8 @@ public class TicketService {
         }
 
         TicketAlert alert = alertEvaluator.evaluateTicket(ticket, now);
-        eventPublisher.publish(new TicketAlertTriggeredEvent(alert));
-        notificationService.notifyStation(ticket.getStationId(), alert);
+        TicketAlertTriggeredEvent event = new TicketAlertTriggeredEvent(alert);
+        eventPublisher.publish(event);
+        notificationService.notifyStation(ticket.getStationId(), event);
     }
 }
