@@ -1,111 +1,44 @@
+import { Order } from "@/features/order/config/order.config"
 import { CONFIG } from "@/lib/config"
 import { KitchenTicket, KitchenTicketStatus } from "../config/kds.config"
-import { Order } from "@/features/order/config/order.config"
 
 export interface IKdsApi {
-  getTickets(): Promise<KitchenTicket[]>
-  updateTicketStatus(
+  getTickets(stationId?: string): Promise<KitchenTicket[]>
+  updateStatus(
     ticketId: string,
     status: KitchenTicketStatus
   ): Promise<KitchenTicket>
-  createTicketFromOrder(order: Order): Promise<KitchenTicket>
 }
 
-class MockKdsApi implements IKdsApi {
-  async getTickets(): Promise<KitchenTicket[]> {
-    const saved = localStorage.getItem("mock_tickets")
-    return saved ? JSON.parse(saved) : []
-  }
-
-  async updateTicketStatus(
-    ticketId: string,
-    status: KitchenTicketStatus
-  ): Promise<KitchenTicket> {
-    const saved = localStorage.getItem("mock_tickets")
-    const tickets = saved ? JSON.parse(saved) : []
-    const ticket = tickets.find((t: KitchenTicket) => t.id === ticketId)
-    if (ticket) {
-      ticket.status = status
-
-      // Sync with mock_orders for consistency in mock mode
-      const savedOrders = localStorage.getItem("mock_orders")
-      if (savedOrders) {
-        const orders = JSON.parse(savedOrders)
-        const order = orders.find((o: Order) => o.id === ticket.orderId)
-        if (order) {
-          if (status === "IN_PROGRESS") order.status = "PREPARING"
-          else if (status === "READY") order.status = "READY"
-          else if (status === "COMPLETED") order.status = "SERVED"
-          else if (status === "CANCELLED") order.status = "CANCELLED"
-          localStorage.setItem("mock_orders", JSON.stringify(orders))
-        }
-      }
-    }
-    localStorage.setItem("mock_tickets", JSON.stringify(tickets))
-    return ticket
-  }
-
-  async createTicketFromOrder(order: Order): Promise<KitchenTicket> {
-    const newTicket: KitchenTicket = {
-      id: `tk-${Math.random().toString(36).substr(2, 9)}`,
-      orderId: order.id,
-      tableNumber: order.tableNumber,
-      status: "PENDING",
-      items: order.items,
-      priority: 1,
-      prepTimeMinutes: 15,
-      createdAt: new Date().toISOString(),
-    }
-    const saved = localStorage.getItem("mock_tickets")
-    const tickets = saved ? JSON.parse(saved) : []
-    tickets.push(newTicket)
-    localStorage.setItem("mock_tickets", JSON.stringify(tickets))
-    return newTicket
-  }
-}
+const API_URL = `${CONFIG.API_URL}/kitchen-operation`
 
 class RealKdsApi implements IKdsApi {
-  async getTickets(): Promise<KitchenTicket[]> {
-    const response = await fetch(`${CONFIG.API_URL}/kds/tickets`)
-    return response.json()
+  async getTickets(stationId: string = 'main'): Promise<KitchenTicket[]> {
+    const response = await fetch(`${API_URL}/kitchen/stations/${stationId}/tickets`)
+    if (!response.ok) throw new Error("Failed to fetch tickets")
+    const data = await response.json()
+    // The backend returns TicketListResponseDto which has a list of tickets
+    return data.tickets || []
   }
 
-  async updateTicketStatus(
+  async updateStatus(
     ticketId: string,
     status: KitchenTicketStatus
   ): Promise<KitchenTicket> {
     const response = await fetch(
-      `${CONFIG.API_URL}/kds/tickets/${ticketId}/status`,
+      `${API_URL}/kitchen/tickets/${ticketId}/status`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ 
+          newStatus: status,
+          changedByUserId: "STAFF_ID" // This should ideally come from Auth context
+        }),
       }
     )
+    if (!response.ok) throw new Error("Failed to update ticket status")
     return response.json()
-  }
-
-  async createTicketFromOrder(order: Order): Promise<KitchenTicket> {
-    const newTicket: KitchenTicket = {
-      id: `tk-${Math.random().toString(36).substr(2, 9)}`,
-      orderId: order.id,
-      tableNumber: order.tableNumber,
-      status: "PENDING",
-      items: order.items,
-      // Priority higher for larger orders, can be adjusted based on business rules
-      priority: order.items.length >= 8 ? 3 : order.items.length >= 5 ? 2 : 1,
-      // Prep time estimated based on number of items, can be refined with more complex logic
-      prepTimeMinutes: Math.max(10, order.items.length * 3),
-      createdAt: new Date().toISOString(),
-    }
-    const saved = localStorage.getItem("mock_tickets")
-    const tickets = saved ? JSON.parse(saved) : []
-    tickets.push(newTicket)
-    localStorage.setItem("mock_tickets", JSON.stringify(tickets))
-    return newTicket
   }
 }
 
-export const kdsApi: IKdsApi = CONFIG.IS_MOCK
-  ? new MockKdsApi()
-  : new RealKdsApi()
+export const kdsApi: IKdsApi = new RealKdsApi()

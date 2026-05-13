@@ -1,9 +1,16 @@
 import { CONFIG } from '@/lib/config';
-import { User, Role } from '../config/auth.config';
+import { User } from '../config/auth.config';
+
+export interface IAuthResponse {
+  accessToken: string;
+  refreshToken: string;
+}
 
 export interface IAuthApi {
-  login(email: string, password: string): Promise<{ user: User; token: string }>;
+  login(email: string, password: string): Promise<{ user: User; tokens: IAuthResponse }>;
 }
+
+const API_URL = `${CONFIG.API_URL}/user-management`
 
 const MOCK_USERS: Record<string, User & { password: string }> = {
   'table1@example.com': {
@@ -50,27 +57,59 @@ const MOCK_USERS: Record<string, User & { password: string }> = {
   }
 };
 
+function decodeJwt(token: string) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      window.atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    console.error('Failed to decode JWT', e);
+    return null;
+  }
+}
+
 class MockAuthApi implements IAuthApi {
-  async login(email: string, password: string): Promise<{ user: User; token: string }> {
+  async login(email: string, password: string): Promise<{ user: User; tokens: IAuthResponse }> {
     await new Promise(resolve => setTimeout(resolve, 500));
     const user = MOCK_USERS[email];
     if (user && user.password === password) {
       const { password: _, ...userWithoutPassword } = user;
-      return { user: userWithoutPassword, token: 'mock-token' };
+      return { 
+        user: userWithoutPassword, 
+        tokens: { accessToken: 'mock-access', refreshToken: 'mock-refresh' } 
+      };
     }
     throw new Error('Invalid email or password');
   }
 }
 
 class RealAuthApi implements IAuthApi {
-  async login(email: string, password: string): Promise<{ user: User; token: string }> {
-    const response = await fetch(`${CONFIG.API_URL}/auth/login`, {
+  async login(email: string, password: string): Promise<{ user: User; tokens: IAuthResponse }> {
+    const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
     if (!response.ok) throw new Error('Login failed');
-    return response.json();
+    const tokens: IAuthResponse = await response.json();
+    
+    const payload = decodeJwt(tokens.accessToken);
+    if (!payload) throw new Error('Invalid token received');
+
+    const user: User = {
+      id: payload.sub,
+      email: payload.email,
+      name: payload.email.split('@')[0], // Fallback name
+      roles: payload.roles,
+    };
+
+    return { user, tokens };
   }
 }
 

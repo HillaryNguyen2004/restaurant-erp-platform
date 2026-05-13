@@ -11,10 +11,10 @@ import { kdsApi } from '@/features/kds/data-access/kds.api';
 import { ItemDialog } from '@/features/menu/components/item-dialog';
 import { MenuCard } from '@/features/menu/components/menu-card';
 import { MenuItem } from '@/features/menu/config/menu.config';
-import { menuQueries } from '@/features/menu/data-access/menu.queries';
+import { useGetAllMenuItems, useCategories } from '@/features/menu/data-access/menu.queries';
 import { ActiveOrdersSheet } from '@/features/order/components/active-orders-sheet';
 import { OrderItem } from '@/features/order/config/order.config';
-import { orderQueries } from '@/features/order/data-access/order.queries';
+import { usePlaceOrder, useSessionByTable } from '@/features/order/data-access/order.queries';
 import { useRealtime } from '@/providers/realtime-provider';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, LogOut, ShoppingCart } from 'lucide-react';
@@ -24,32 +24,40 @@ import { toast } from 'sonner';
 export default function MenuPage() {
   const queryClient = useQueryClient();
   const { emit } = useRealtime();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
 
-  const { data: categories, isLoading: isLoadingCats } = menuQueries.useCategories();
-  const { data: items, isLoading: isLoadingItems } = menuQueries.useItems();
-  const placeOrderMutation = orderQueries.usePlaceOrder();
+  const { data: categories, isLoading: isLoadingCats } = useCategories();
+  const { data: items, isLoading: isLoadingItems } = useGetAllMenuItems();
+  
+  // For customers, we assume they are at a table and have a session
+  const { data: session, isLoading: isLoadingSession } = useSessionByTable(user?.id);
+  const sessionId = session?.orderSessionId;
+  const placeOrderMutation = usePlaceOrder();
 
   const handlePlaceOrder = () => {
     if (cart.length === 0) return;
 
+    if (!sessionId) {
+      toast.error("No active session found for this table");
+      return;
+    }
+
     placeOrderMutation.mutate({
-      tableNumber: 'A1',
-      items: cart,
-      total: cart.reduce((acc, item) => acc + item.price * item.quantity, 0),
+      sessionId,
+      items: cart.map(i => ({
+        menuItemId: i.menuItemId,
+        quantity: i.quantity,
+        specialInstructions: i.specialInstructions || "",
+      }))
     }, {
       onSuccess: async (order) => {
-        // Mock KDS integration
-        await kdsApi.createTicketFromOrder(order);
-
         toast.success('Order placed successfully!');
         setCart([]);
         setIsCartOpen(false);
         emit('NEW_ORDER_PLACED', order);
-        emit('NEW_TICKET_CREATED', order);
       }
     });
   };
@@ -58,20 +66,21 @@ export default function MenuPage() {
     if (!selectedItem) return;
 
     setCart((prev) => {
-      const existing = prev.find((i) => i.menuItemId === selectedItem.id);
+      const existing = prev.find((i) => i.menuItemId === selectedItem.itemId);
       if (existing) {
         return prev.map((i) =>
-          i.menuItemId === selectedItem.id ? { ...i, quantity: i.quantity + quantity, specialInstructions: note } : i
+          i.menuItemId === selectedItem.itemId ? { ...i, quantity: i.quantity + quantity, specialInstructions: note } : i
         );
       }
       return [
         ...prev,
         {
-          id: Math.random().toString(),
-          menuItemId: selectedItem.id,
+          itemId: Math.random().toString(),
+          menuItemId: selectedItem.itemId,
           menuItemName: selectedItem.name,
           quantity: quantity,
-          price: selectedItem.price,
+          unitPrice: selectedItem.price,
+          subtotal: selectedItem.price * quantity,
           specialInstructions: note,
         },
       ];
@@ -81,7 +90,7 @@ export default function MenuPage() {
     setSelectedItem(null);
   };
 
-  if (isLoadingCats || isLoadingItems) {
+  if (isLoadingCats || isLoadingItems || isLoadingSession) {
     return (
       <div className="container mx-auto p-4 space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -132,11 +141,11 @@ export default function MenuPage() {
                   <>
                     <div className="flex-grow space-y-4 overflow-y-auto pr-2">
                       {cart.map((item) => (
-                        <div key={item.menuItemId} className="flex justify-between items-center border-b pb-2">
+                        <div key={item.itemId} className="flex justify-between items-center border-b pb-2">
                           <div>
                             <div className="font-medium">{item.menuItemName}</div>
                             <div className="text-sm text-muted-foreground">
-                              {item.quantity} x ${item.price}
+                              {item.quantity} x ${item.unitPrice}
                             </div>
                             {item.specialInstructions && (
                               <div className="text-xs italic text-muted-foreground">
@@ -144,7 +153,7 @@ export default function MenuPage() {
                               </div>
                             )}
                           </div>
-                          <div className="font-bold">${item.quantity * item.price}</div>
+                          <div className="font-bold">${item.subtotal}</div>
                         </div>
                       ))}
                     </div>
@@ -152,7 +161,7 @@ export default function MenuPage() {
                     <div className="space-y-4">
                       <div className="flex justify-between text-lg font-bold">
                         <span>Total</span>
-                        <span>${cart.reduce((acc, i) => acc + i.price * i.quantity, 0)}</span>
+                        <span>${cart.reduce((acc, i) => acc + i.subtotal, 0)}</span>
                       </div>
                       <Button
                         className="w-full"
@@ -180,23 +189,23 @@ export default function MenuPage() {
         onConfirm={onConfirmAdd}
       />
 
-      <Tabs defaultValue={categories?.[0]?.id || ''} className="w-full">
+      <Tabs defaultValue={categories?.[0]?.categoryId || ''} className="w-full">
         <TabsList className="mb-4">
           {categories?.map((cat) => (
-            <TabsTrigger key={cat.id} value={cat.id}>
+            <TabsTrigger key={cat.categoryId} value={cat.categoryId}>
               {cat.name}
             </TabsTrigger>
           ))}
         </TabsList>
 
         {categories?.map((cat) => (
-          <TabsContent key={cat.id} value={cat.id}>
+          <TabsContent key={cat.categoryId} value={cat.categoryId}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {items
-                ?.filter((item) => item.categoryId === cat.id)
+                ?.filter((item) => item.categoryId === cat.categoryId)
                 .map((item) => (
                   <MenuCard
-                    key={item.id}
+                    key={item.itemId}
                     item={item}
                     onAddClick={(item) => setSelectedItem(item)}
                   />

@@ -11,7 +11,7 @@ services:
     volumes:
       - irms_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d irms_db"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d irms_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,7 +39,7 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      test: [ "CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1" ]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -50,9 +50,9 @@ services:
       dockerfile: Dockerfile.dev
     container_name: user-management-service
     ports:
-      - "3000:3000"
+      - "8001:8001"
     environment:
-      PORT: 3000
+      PORT: 8001
       JWT_SECRET: dev-secret
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:mysecretpassword@postgres:5432/irms_db
@@ -75,9 +75,9 @@ services:
     container_name: table-reservation-management-service
     command: sh -c "pnpm prisma migrate deploy && pnpm run start:dev"
     ports:
-      - "3001:3000"
+      - "8002:8002"
     environment:
-      PORT: 3000
+      PORT: 8002
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:mysecretpassword@postgres:5432/irms_db?schema=table_reservation
       KAFKA_BROKER: kafka:9092
@@ -97,7 +97,7 @@ services:
       dockerfile: Dockerfile
     container_name: order-menu-service
     ports:
-      - "8081:8080"
+      - "8003:8003"
     environment:
       APP_PERSISTENCE_TYPE: sql
       APP_DB_URL: jdbc:postgresql://postgres:5432/irms_db
@@ -106,6 +106,7 @@ services:
       APP_DB_SCHEMA: order_menu
       APP_EVENTS_KAFKA_ENABLED: "true"
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SERVER_PORT: 8003
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,7 +119,7 @@ services:
       dockerfile: Dockerfile
     container_name: kitchen-operation-service
     ports:
-      - "8082:8080"
+      - "8004:8004"
     environment:
       APP_PERSISTENCE_TYPE: sql
       APP_DB_URL: jdbc:postgresql://postgres:5432/irms_db
@@ -128,6 +129,7 @@ services:
       APP_EVENTS_KAFKA_ENABLED: "true"
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       ORDER_MENU_CONSUMER_GROUP: kitchen-operation-order-menu
+      SERVER_PORT: 8004
     depends_on:
       postgres:
         condition: service_healthy
@@ -139,7 +141,7 @@ services:
     container_name: irms-kong
     ports:
       - "8000:8000"
-      - "8001:8001"
+      - "8010:8001"
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml

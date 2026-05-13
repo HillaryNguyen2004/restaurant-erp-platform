@@ -11,13 +11,20 @@ export const KitchenTicketStatusSchema = z.enum([
 export type KitchenTicketStatus = z.infer<typeof KitchenTicketStatusSchema>
 
 export const KitchenTicketSchema = z.object({
-  id: z.string(),
+  ticketId: z.string(),
   orderId: z.string(),
   tableNumber: z.string(),
   status: KitchenTicketStatusSchema,
-  items: z.array(OrderItemSchema),
+  items: z.array(z.object({
+    menuItemName: z.string(),
+    quantity: z.number(),
+    specialInstructions: z.string().optional(),
+    allergyTags: z.array(z.string()).optional(),
+  })),
   priority: z.number(),
-  prepTimeMinutes: z.number(),
+  elapsedMinutes: z.number(),
+  remainingMinutes: z.number(),
+  alertLevel: z.string(),
   createdAt: z.string(),
 })
 export type KitchenTicket = z.infer<typeof KitchenTicketSchema>
@@ -29,10 +36,9 @@ export function getWaitingMinutes(createdAt: string): number {
 export function getUrgencyLevel(
   ticket: KitchenTicket
 ): "critical" | "warning" | "normal" {
-  const waited = getWaitingMinutes(ticket.createdAt)
-  if (waited >= ticket.prepTimeMinutes || ticket.priority >= 3)
+  if (ticket.alertLevel === 'CRITICAL' || ticket.priority >= 3)
     return "critical"
-  if (waited >= ticket.prepTimeMinutes * 0.6 || ticket.priority === 2)
+  if (ticket.alertLevel === 'WARNING' || ticket.priority === 2)
     return "warning"
   return "normal"
 }

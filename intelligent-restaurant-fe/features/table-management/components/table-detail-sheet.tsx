@@ -11,11 +11,8 @@ import {
 } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/features/auth/components/auth-provider"
-import { kdsApi } from "@/features/kds/data-access/kds.api"
 import { MenuItem } from "@/features/menu/config/menu.config"
-import { menuApi } from "@/features/menu/data-access/menu.api"
 import { Order } from "@/features/order/config/order.config"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   CheckCircle,
   Minus,
@@ -28,7 +25,6 @@ import {
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Table } from "../config/table.config"
-import { tableApi } from "../data-access/table.api"
 
 interface Props {
   table: Table | null
@@ -51,74 +47,57 @@ const STATUS_COLOR: Record<string, string> = {
   CANCELLED: "bg-red-100 text-red-500",
 }
 
+import { useCheckoutTable, usePlaceOrder, useTableOrders } from "../data-access/table.queries"
+
+import { useCategories, useGetAllMenuItems } from "@/features/menu/data-access/menu.queries"
+
 export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
   const { user } = useAuth()
   const role = user?.roles?.[0]
-  const queryClient = useQueryClient()
   const [cart, setCart] = useState<CartItem[]>([])
 
   useEffect(() => {
     setCart([])
-  }, [table?.id])
+  }, [table?.tableId])
 
-  const { data: orders = [], isLoading: loadingOrders } = useQuery({
-    queryKey: ["table-orders", table?.tableNumber],
-    queryFn: () => tableApi.getOrdersByTable(table!.tableNumber),
-    enabled: !!table,
-  })
+  const { data: orders = [], isLoading: loadingOrders } = useTableOrders(table?.tableId)
+  const { data: menuItems = [] } = useGetAllMenuItems()
+  const { data: categories = [] } = useCategories()
 
-  const { data: menuItems = [] } = useQuery({
-    queryKey: ["menu-items"],
-    queryFn: () => menuApi.getItems(),
-    enabled: !!table,
-  })
+  const placeMutation = usePlaceOrder()
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => menuApi.getCategories(),
-    enabled: !!table,
-  })
-
-  const placeMutation = useMutation({
-    mutationFn: (items: CartItem[]) =>
-      tableApi.placeOrderForTable(
-        table!.tableNumber,
-        items.map((i) => ({
-          id: Math.random().toString(36).substr(2, 9),
-          menuItemId: i.menuItemId,
-          menuItemName: i.menuItemName,
-          quantity: i.quantity,
-          price: i.price,
-          specialInstructions: "",
-        }))
-      ),
-    onSuccess: async (newOrder) => {
-      // Tạo KDS ticket để bếp thấy
-      await kdsApi.createTicketFromOrder(newOrder)
-
-      queryClient.invalidateQueries({
-        queryKey: ["table-orders", table?.tableNumber],
-      })
-      queryClient.invalidateQueries({ queryKey: ["tickets"] })
-      setCart([])
-      toast.success(`Order placed for Table ${table?.tableNumber}!`)
-    },
-    onError: () => {
-      toast.error("Failed to place order. Please try again.")
-    },
-  })
+  // Custom success handler for cart clearing
+  const handlePlaceOrder = () => {
+    if (!table?.tableId) return;
+    placeMutation.mutate({
+      tableId: table.tableId,
+      items: cart.map((i) => ({
+        id: Math.random().toString(36).substr(2, 9),
+        menuItemId: i.menuItemId,
+        menuItemName: i.menuItemName,
+        quantity: i.quantity,
+        price: i.price,
+        specialInstructions: "",
+      }))
+    }, {
+      onSuccess: () => {
+        setCart([])
+        toast.success(`Order placed for Table ${table?.tableNumber}!`)
+      }
+    })
+  }
 
   const addToCart = (item: MenuItem) => {
     setCart((prev) => {
-      const existing = prev.find((c) => c.menuItemId === item.id)
+      const existing = prev.find((c) => c.menuItemId === item.itemId)
       if (existing)
         return prev.map((c) =>
-          c.menuItemId === item.id ? { ...c, quantity: c.quantity + 1 } : c
+          c.menuItemId === item.itemId ? { ...c, quantity: c.quantity + 1 } : c
         )
       return [
         ...prev,
         {
-          menuItemId: item.id,
+          menuItemId: item.itemId,
           menuItemName: item.name,
           price: item.price,
           quantity: 1,
@@ -138,19 +117,14 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
         .filter((c) => c.quantity > 0)
     )
   }
-  const checkoutMutation = useMutation({
-    mutationFn: () => tableApi.checkoutTable(table!.tableNumber),
-    onSuccess: () => {
-      tableApi.updateTableStatus(table!.id, "AVAILABLE")
-      queryClient.invalidateQueries({
-        queryKey: ["table-orders", table?.tableNumber],
-      })
-      queryClient.invalidateQueries({ queryKey: ["tables"] })
-      toast.success(`Table ${table?.tableNumber} checked out!`)
-      onClose()
-    },
-  })
-  const handleCheckout = () => checkoutMutation.mutate()
+
+  const checkoutMutation = useCheckoutTable()
+  const handleCheckout = () => {
+    if (!table?.tableId) return;
+    checkoutMutation.mutate(table.tableId, {
+      onSuccess: () => onClose()
+    })
+  }
 
   const handlePrint = () => {
     const allItems = orders.flatMap((o) => o.items)
@@ -166,8 +140,8 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
       ...allItems.map((i) => [
         i.menuItemName,
         i.quantity,
-        `$${i.price.toFixed(2)}`,
-        `$${(i.price * i.quantity).toFixed(2)}`,
+        `$${i.unitPrice.toFixed(2)}`,
+        `$${(i.unitPrice * i.quantity).toFixed(2)}`,
       ]),
       [],
       ["", "", "Subtotal", `$${subtotal.toFixed(2)}`],
@@ -185,22 +159,25 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
     URL.revokeObjectURL(url)
   }
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0)
-  const billTotal = orders.reduce((sum, o) => sum + o.total, 0)
+  const billTotal = orders.reduce((sum, o) => sum + o.subtotal, 0)
 
   if (!table) return null
 
+  const isServer = role === "SERVER" || role === "TABLE_STAFF" || role === "ADMIN"
+  const isCashier = role === "CASHIER" || role === "ADMIN"
+
   return (
     <Sheet open={!!table} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-        <SheetHeader className="mb-4">
-          <SheetTitle>Table {table.tableNumber}</SheetTitle>
-          <div className="flex items-center gap-3 text-sm text-slate-500">
-            <span>Capacity: {table.capacity}</span>
+      <SheetContent className="w-full overflow-y-auto sm:max-w-xl border-l-4 border-slate-900">
+        <SheetHeader className="mb-6">
+          <SheetTitle className="text-3xl font-black tracking-tighter">TABLE #{table.tableNumber}</SheetTitle>
+          <div className="flex items-center gap-3 text-sm font-bold text-slate-400">
+            <span>CAPACITY: {table.capacity}</span>
             {orders.length > 0 && (
               <>
-                <Separator orientation="vertical" className="h-4" />
-                <span className="font-semibold text-slate-700">
-                  Bill: ${billTotal.toFixed(2)}
+                <Separator orientation="vertical" className="h-4 w-0.5 bg-slate-200" />
+                <span className="text-emerald-600">
+                  CURRENT BILL: ${billTotal.toFixed(2)}
                 </span>
               </>
             )}
@@ -208,22 +185,22 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
         </SheetHeader>
 
         <Tabs defaultValue={defaultTab || "orders"}>
-          <TabsList className="mb-4 w-full">
-            <TabsTrigger value="orders" className="flex-1">
-              <UtensilsCrossed className="mr-1.5 h-4 w-4" />
-              Orders ({orders.length})
+          <TabsList className="mb-6 w-full h-12 p-1">
+            <TabsTrigger value="orders" className="flex-1 font-bold text-slate-500">
+              <UtensilsCrossed className="mr-2 h-4 w-4" />
+              ORDERS ({orders.length})
             </TabsTrigger>
-            {(role === "TABLE" || role === "ADMIN") && (
-              <TabsTrigger value="pos" className="flex-1">
-                <ShoppingCart className="mr-1.5 h-4 w-4" />
-                POS{" "}
+            {isServer && (
+              <TabsTrigger value="pos" className="flex-1 font-bold text-slate-500">
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                ADD ITEMS{" "}
                 {cart.length > 0 &&
                   `(${cart.reduce((s, i) => s + i.quantity, 0)})`}
               </TabsTrigger>
             )}
-            {(role === "CASHIER" || role === "ADMIN") && (
-              <TabsTrigger value="bill" className="flex-1">
-                Bill
+            {isCashier && (
+              <TabsTrigger value="bill" className="flex-1 font-bold text-slate-500">
+                BILL & PAY
               </TabsTrigger>
             )}
           </TabsList>
@@ -233,11 +210,11 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
             {orders
               .flatMap((o) => o.items)
               .map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
+                <div key={item.itemId} className="flex justify-between text-sm">
                   <span>
                     {item.menuItemName} ×{item.quantity}
                   </span>
-                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+                  <span>${(item.unitPrice * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
 
@@ -293,12 +270,12 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
 
             {orders.map((order: Order) => (
               <div
-                key={order.id}
+                key={order.orderId}
                 className="space-y-3 rounded-xl border border-slate-100 p-4"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs text-slate-400">
-                    #{order.id.slice(-6)}
+                    #{order.orderId.slice(-6)}
                   </span>
                   <Badge
                     className={`text-xs ${STATUS_COLOR[order.status] ?? ""}`}
@@ -309,13 +286,13 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
 
                 <ul className="space-y-1">
                   {order.items.map((item) => (
-                    <li key={item.id} className="flex justify-between text-sm">
+                    <li key={item.itemId} className="flex justify-between text-sm">
                       <span className="text-slate-700">
                         {item.menuItemName}
                       </span>
                       <span className="text-slate-400">
                         ×{item.quantity} · $
-                        {(item.price * item.quantity).toFixed(2)}
+                        {(item.unitPrice * item.quantity).toFixed(2)}
                       </span>
                     </li>
                   ))}
@@ -323,12 +300,12 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
 
                 <div className="flex items-center justify-between border-t border-slate-50 pt-1 text-sm">
                   <span className="text-xs text-slate-400">
-                    {new Date(order.createdAt).toLocaleTimeString("vi-VN", {
+                    {new Date(order.placedAt).toLocaleTimeString("vi-VN", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </span>
-                  <span className="font-bold">${order.total.toFixed(2)}</span>
+                  <span className="font-bold">${order.subtotal.toFixed(2)}</span>
                 </div>
               </div>
             ))}
@@ -349,20 +326,20 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
           <TabsContent value="pos" className="space-y-4">
             {categories.map((cat) => {
               const catItems = menuItems.filter(
-                (i) => i.categoryId === cat.id && i.isAvailable
+                (i) => i.categoryId === cat.categoryId && i.available
               )
               if (catItems.length === 0) return null
               return (
-                <div key={cat.id}>
+                <div key={cat.categoryId}>
                   <p className="mb-2 text-xs font-bold tracking-widest text-slate-400 uppercase">
                     {cat.name}
                   </p>
                   <div className="space-y-1">
                     {catItems.map((item) => {
-                      const inCart = cart.find((c) => c.menuItemId === item.id)
+                      const inCart = cart.find((c) => c.menuItemId === item.itemId)
                       return (
                         <div
-                          key={item.id}
+                          key={item.itemId}
                           className="flex items-center justify-between rounded-lg p-2 hover:bg-slate-50"
                         >
                           <div className="min-w-0 flex-1">
@@ -380,7 +357,7 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
                                 size="icon"
                                 variant="outline"
                                 className="h-7 w-7 rounded-full"
-                                onClick={() => updateQty(item.id, -1)}
+                                onClick={() => updateQty(item.itemId, -1)}
                               >
                                 <Minus className="h-3 w-3" />
                               </Button>
@@ -391,7 +368,7 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
                                 size="icon"
                                 variant="outline"
                                 className="h-7 w-7 rounded-full"
-                                onClick={() => updateQty(item.id, 1)}
+                                onClick={() => updateQty(item.itemId, 1)}
                               >
                                 <Plus className="h-3 w-3" />
                               </Button>
@@ -456,7 +433,7 @@ export function TableDetailSheet({ table, onClose, defaultTab }: Props) {
                 <Button
                   className="w-full bg-amber-600 font-bold hover:bg-amber-700"
                   disabled={placeMutation.isPending}
-                  onClick={() => placeMutation.mutate(cart)}
+                  onClick={handlePlaceOrder}
                 >
                   {placeMutation.isPending
                     ? "Placing..."

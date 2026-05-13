@@ -4,6 +4,8 @@ import { createContext, useContext, useEffect, ReactNode } from 'react';
 import { CONFIG } from '@/lib/config';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { useAuth } from '@/features/auth/components/auth-provider';
+
 interface RealtimeContextType {
   emit: (event: string, data: unknown) => void;
 }
@@ -12,6 +14,8 @@ const RealtimeContext = createContext<RealtimeContextType | undefined>(undefined
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const role = user?.roles?.[0];
 
   useEffect(() => {
     if (CONFIG.IS_MOCK) {
@@ -24,19 +28,39 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
       window.addEventListener('storage', handleStorageChange);
       return () => window.removeEventListener('storage', handleStorageChange);
-    } else {
+    } else if (user) {
       // Real WebSocket implementation
-      const socket = new WebSocket(CONFIG.WS_URL);
+      let wsPath = '/order-menu/ws/orders';
+      if (role === 'CHEF' || role === 'KITCHEN_STAFF') {
+        wsPath = '/kitchen-operation/ws/kds';
+      }
+
+      const socket = new WebSocket(`${CONFIG.WS_URL}${wsPath}`);
       socket.onmessage = (event) => {
-        const { event: eventName, data } = JSON.parse(event.data);
-        processEvent(eventName, data);
+        try {
+          const payload = JSON.parse(event.data);
+          // Backend uses 'eventType' for the name and 'data' for the body
+          const eventName = payload.eventType || payload.event;
+          const data = payload.data;
+          
+          if (eventName) {
+            processEvent(eventName, data);
+          }
+        } catch (err) {
+          console.error('[Realtime] Failed to parse message', err);
+        }
       };
+      socket.onerror = (err) => console.error('[Realtime] WebSocket error', err);
+      
       return () => socket.close();
     }
-  }, [queryClient]);
+  }, [queryClient, user, role]);
 
   const processEvent = (event: string, data: unknown) => {
     console.log(`[Realtime] Received event: ${event}`, data);
+    
+    // Dispatch a custom event for components to listen to
+    window.dispatchEvent(new CustomEvent('realtime_event', { detail: { event, data } }));
     
     // Global invalidations based on event names
     switch (event) {

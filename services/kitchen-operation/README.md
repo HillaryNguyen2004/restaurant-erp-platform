@@ -17,5 +17,5 @@ docker compose build kitchen-operation
 
 ## Swagger
 
-- Local: `http://localhost:8080/swagger-ui.html`
-- Docker Compose: `http://localhost:8082/swagger-ui.html`
+- Local: `http://localhost:8080/kitchen-operation/swagger-ui.html`
+- Docker Compose: `http://localhost:8004/kitchen-operation/swagger-ui.html`

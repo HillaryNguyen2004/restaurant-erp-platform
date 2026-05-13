@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Role, User } from '../config/auth.config';
-import { authApi } from '../data-access/auth.api';
+import { authQueries } from '../data-access/auth.queries';
 
 interface AuthContextType {
   user: User | null;
@@ -17,6 +17,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { mutateAsync: useLogin, error: loginError } = authQueries.useLogin();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
@@ -35,17 +36,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const newUser = await authApi.login(email, password);
+      const newUser = await useLogin({
+        email, password
+      });
       setUser(newUser.user);
       localStorage.setItem('auth_user', JSON.stringify(newUser));
 
       // Redirect based on role
       const role = newUser.user.roles[0];
       if (role === 'TABLE') router.push('/menu');
-      else if (role === 'KITCHEN_STAFF') router.push('/kds');
+      else if (role === 'KITCHEN_STAFF' || role === 'CHEF') router.push('/kds');
       else if (role === 'CASHIER') router.push('/billing');
-      else if (role === 'TABLE_STAFF') router.push('/tables');
-      else if (role === 'ADMIN') router.push('/analytics');
+      else if (role === 'TABLE_STAFF' || role === 'SERVER') router.push('/tables');
+      else if (role === 'ADMIN' || role === 'MANAGER') router.push('/analytics');
     } catch (error) {
       toast.error('Login failed. Please check your credentials.');
       console.error(error);
