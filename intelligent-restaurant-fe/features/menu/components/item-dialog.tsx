@@ -10,8 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Clock, ImageOff } from "lucide-react"
-import Image from "next/image"
+import { Clock } from "lucide-react"
 import { useState, useEffect } from "react"
 import { MenuItem } from "../config/menu.config"
 
@@ -37,34 +36,15 @@ export function ItemDialog({ item, onClose, onConfirm }: ItemDialogProps) {
   return (
     <Dialog open={!!item} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="overflow-hidden p-0 sm:max-w-md">
-        {/* Image banner */}
-        <div className="relative h-48 w-full bg-slate-100">
-          {item.imageUrl ? (
-            <Image
-              src={item.imageUrl}
-              alt={item.name}
-              fill
-              className="object-cover"
-              sizes="448px"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <ImageOff className="h-10 w-10 text-slate-300" />
-            </div>
-          )}
-
-          {/* Prep time */}
-          <div className="absolute bottom-3 left-3">
-            <Badge className="gap-1 border-0 bg-black/50 text-white backdrop-blur-sm">
-              <Clock className="h-3 w-3" />
-              {item.prepTimeMinutes} min
-            </Badge>
-          </div>
-        </div>
-
-        <div className="space-y-4 p-6">
+        <div className="space-y-4 p-6 pt-10">
           <DialogHeader>
-            <DialogTitle className="text-xl">{item.name}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl">{item.name}</DialogTitle>
+              <Badge className="gap-1 bg-slate-100 text-slate-700">
+                <Clock className="h-3 w-3" />
+                {item.prepTimeMinutes} min
+              </Badge>
+            </div>
             <p className="text-sm text-slate-500">{item.description}</p>
             <p className="text-lg font-bold text-emerald-600">${item.price}</p>
           </DialogHeader>

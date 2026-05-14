@@ -13,6 +13,7 @@ import com.hcmut.kitchenoperation.domain.repository.IKitchenStationRepository;
 import com.hcmut.kitchenoperation.domain.repository.IKitchenTicketRepository;
 import com.hcmut.kitchenoperation.port.IClock;
 import com.hcmut.kitchenoperation.port.IEventPublisher;
+import com.hcmut.kitchenoperation.port.INotificationService;
 import com.hcmut.kitchenoperation.port.IOrderReader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class KitchenService {
     private final IKitchenStationRepository stationRepository;
     private final IOrderReader orderReader;
     private final IEventPublisher eventPublisher;
+    private final INotificationService notificationService;
     private final IClock clock;
 
     public List<KitchenTicket> routeOrderToKitchen(String orderId) {
@@ -63,6 +65,9 @@ public class KitchenService {
             events.add(new TicketCreatedEvent(ticket));
         }
         eventPublisher.publishBatch(events);
+        for (DomainEvent event : events) {
+            notificationService.notifyStation((String) event.toPayload().get("stationId"), event);
+        }
 
         return tickets;
     }

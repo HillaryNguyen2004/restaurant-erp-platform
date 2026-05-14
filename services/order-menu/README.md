@@ -18,4 +18,4 @@ docker compose build order-menu
 ## Swagger
 
 - Local: `http://localhost:8080/swagger-ui.html`
-- Docker Compose: `http://localhost:8081/swagger-ui.html`
+- Docker Compose: `http://localhost:8003/order-menu/swagger-ui.html`

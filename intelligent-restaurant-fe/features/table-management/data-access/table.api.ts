@@ -1,163 +1,160 @@
+import { Order } from "@/features/order/config/order.config"
 import { CONFIG } from "@/lib/config"
 import { Table, TableStatus } from "../config/table.config"
-import { Order } from "@/features/order/config/order.config"
+
+export type TableOrderSession = {
+  sessionId: string
+}
+
+export type TableOrderItemRequest = {
+  menuItemId: string
+  quantity: number
+  specialInstructions?: string
+}
+
 export interface ITableApi {
-  getTables(): Promise<Table[]>
-  updateTableStatus(tableId: string, status: TableStatus): Promise<Table>
-  getOrdersByTable(tableNumber: string): Promise<Order[]>
-  placeOrderForTable(tableNumber: string, items: Order["items"]): Promise<Order>
-  checkoutTable(tableNumber: string): Promise<void>
+  getAll(): Promise<Table[]>
+  getTable(tableId: string): Promise<Table>
+  updateStatus(tableId: string, status: TableStatus): Promise<void>
+  startSession(tableId: string): Promise<TableOrderSession>
+  getOrders(tableId: string): Promise<Order[]>
+  placeOrder(tableId: string, items: TableOrderItemRequest[]): Promise<Order>
+  checkout(tableId: string): Promise<void>
 }
 
-class MockTableApi implements ITableApi {
-  async getTables(): Promise<Table[]> {
-    const initialTables: Table[] = [
-      { id: "t1", tableNumber: "1", capacity: 4, status: "AVAILABLE" },
-      { id: "t2", tableNumber: "2", capacity: 2, status: "OCCUPIED" },
-      { id: "t3", tableNumber: "3", capacity: 6, status: "RESERVED" },
-      { id: "t4", tableNumber: "4", capacity: 4, status: "AVAILABLE" },
-      { id: "t5", tableNumber: "5", capacity: 4, status: "AVAILABLE" },
-      { id: "t6", tableNumber: "6", capacity: 2, status: "AVAILABLE" },
-      { id: "t7", tableNumber: "7", capacity: 4, status: "OCCUPIED" },
-      { id: "t8", tableNumber: "8", capacity: 8, status: "AVAILABLE" },
-      { id: "t9", tableNumber: "9", capacity: 4, status: "RESERVED" },
-      { id: "t10", tableNumber: "10", capacity: 6, status: "AVAILABLE" },
-      { id: "t11", tableNumber: "11", capacity: 2, status: "AVAILABLE" },
-      { id: "t12", tableNumber: "12", capacity: 4, status: "OCCUPIED" },
-      { id: "t13", tableNumber: "13", capacity: 6, status: "AVAILABLE" },
-      { id: "t14", tableNumber: "14", capacity: 4, status: "RESERVED" },
-      { id: "t15", tableNumber: "15", capacity: 6, status: "AVAILABLE" },
-      { id: "t16", tableNumber: "16", capacity: 8, status: "OUT_OF_ORDER" },
-      { id: "t17", tableNumber: "17", capacity: 4, status: "AVAILABLE" },
-      { id: "t18", tableNumber: "18", capacity: 2, status: "AVAILABLE" },
-      { id: "t19", tableNumber: "19", capacity: 4, status: "OCCUPIED" },
-      { id: "t20", tableNumber: "20", capacity: 6, status: "AVAILABLE" },
-    ]
-
-    const saved = localStorage.getItem("mock_tables")
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length >= initialTables.length)
-          return parsed
-        // otherwise fall through and overwrite saved with the full initial set
-      } catch (e) {
-        // ignore parse errors and overwrite saved value
-      }
-    }
-
-    localStorage.setItem("mock_tables", JSON.stringify(initialTables))
-
-    return initialTables
-  }
-
-  async updateTableStatus(
-    tableId: string,
-    status: TableStatus
-  ): Promise<Table> {
-    const saved = localStorage.getItem("mock_tables")
-    const tables = saved ? JSON.parse(saved) : []
-    const table = tables.find((t: Table) => t.id === tableId)
-    if (table) table.status = status
-    localStorage.setItem("mock_tables", JSON.stringify(tables))
-    return table
-  }
-
-  async getOrdersByTable(tableNumber: string): Promise<Order[]> {
-    if (typeof window === "undefined") return []
-    const saved = localStorage.getItem("mock_orders")
-    const orders: Order[] = saved ? JSON.parse(saved) : []
-    return orders.filter(
-      (o) =>
-        o.tableNumber === tableNumber &&
-        o.status !== "PAID" &&
-        o.status !== "CANCELLED"
-    )
-  }
-
-  async placeOrderForTable(
-    tableNumber: string,
-    items: Order["items"]
-  ): Promise<Order> {
-    if (typeof window === "undefined")
-      throw new Error("Cannot place order on server")
-    const newOrder: Order = {
-      id: `ord-${Math.random().toString(36).substr(2, 9)}`,
-      tableNumber,
-      status: "PLACED",
-      items,
-      total: items.reduce((sum, i) => sum + i.price * i.quantity, 0),
-      createdAt: new Date().toISOString(),
-    }
-    const saved = localStorage.getItem("mock_orders")
-    const orders = saved ? JSON.parse(saved) : []
-    orders.push(newOrder)
-    localStorage.setItem("mock_orders", JSON.stringify(orders))
-    return newOrder
-  }
-  async checkoutTable(tableNumber: string): Promise<void> {
-    const saved = localStorage.getItem("mock_orders")
-    const orders: Order[] = saved ? JSON.parse(saved) : []
-    const updated = orders.map((o) =>
-      o.tableNumber === tableNumber &&
-      o.status !== "CANCELLED" &&
-      o.status !== "PAID"
-        ? { ...o, status: "PAID" as const }
-        : o
-    )
-    localStorage.setItem("mock_orders", JSON.stringify(updated))
-  }
-}
+const TABLE_URL = `${CONFIG.API_URL}/table-reservation`
+const ORDER_URL = `${CONFIG.API_URL}/order-menu`
 
 class RealTableApi implements ITableApi {
-  async getTables(): Promise<Table[]> {
-    const response = await fetch(`${CONFIG.API_URL}/tables`)
-    return response.json()
+  private async getActiveOrderSession(tableId: string): Promise<TableOrderSession | null> {
+    const response = await fetch(`${ORDER_URL}/order-sessions/table/${tableId}`)
+    if (response.ok) return response.json()
+    if (response.status === 404) return null
+    throw new Error("Failed to fetch active order session")
   }
 
-  async updateTableStatus(
-    tableId: string,
-    status: TableStatus
-  ): Promise<Table> {
-    const response = await fetch(`${CONFIG.API_URL}/tables/${tableId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    })
-    return response.json()
-  }
-
-  async getOrdersByTable(tableNumber: string): Promise<Order[]> {
-    const res = await fetch(`${CONFIG.API_URL}/tables/${tableNumber}/orders`)
-    return res.json()
-  }
-
-  async placeOrderForTable(
-    tableNumber: string,
-    items: Order["items"]
-  ): Promise<Order> {
-    const res = await fetch(`${CONFIG.API_URL}/orders`, {
+  private async openOrderSession(tableId: string): Promise<TableOrderSession> {
+    const response = await fetch(`${ORDER_URL}/order-sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tableNumber, items }),
+      body: JSON.stringify({ tableId }),
     })
-    return res.json()
+    if (!response.ok) throw new Error("Failed to open order session")
+    return response.json()
   }
 
-  async checkoutTable(tableNumber: string): Promise<void> {
-    const saved = localStorage.getItem("mock_orders")
-    const orders: Order[] = saved ? JSON.parse(saved) : []
-    const updated = orders.map((o) =>
-      o.tableNumber === tableNumber &&
-      o.status !== "CANCELLED" &&
-      o.status !== "PAID"
-        ? { ...o, status: "PAID" as const }
-        : o
+  private async ensureOrderSession(tableId: string): Promise<TableOrderSession> {
+    const existingSession = await this.getActiveOrderSession(tableId)
+    if (existingSession) return existingSession
+
+    const openedSession = await this.openOrderSession(tableId)
+    await this.updateStatus(tableId, "OCCUPIED")
+    return openedSession
+  }
+
+  async getAll(): Promise<Table[]> {
+    const response = await fetch(`${TABLE_URL}/tables`)
+    if (!response.ok) throw new Error("Failed to fetch tables")
+    return response.json()
+  }
+
+  async getTable(tableId: string): Promise<Table> {
+    const response = await fetch(`${TABLE_URL}/tables/${tableId}`)
+    if (!response.ok) throw new Error("Failed to fetch table")
+    return response.json()
+  }
+
+  async updateStatus(tableId: string, status: TableStatus): Promise<void> {
+    const statusMap: Record<TableStatus, string> = {
+      FREE: "available",
+      OCCUPIED: "occupied",
+      RESERVED: "reserved",
+      OUT_OF_ORDER: "out-of-order",
+    }
+    const endpoint = statusMap[status]
+    const response = await fetch(`${TABLE_URL}/tables/${tableId}/${endpoint}`, {
+      method: "PATCH",
+    })
+    if (!response.ok) throw new Error(`Failed to update table status to ${status}`)
+  }
+
+  async startSession(tableId: string): Promise<TableOrderSession> {
+    // 1. Start Dining Session (Table Reservation Service)
+    const diningRes = await fetch(`${TABLE_URL}/dining-sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tableId,
+        expectedEndAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      }),
+    })
+    if (!diningRes.ok) throw new Error("Failed to start dining session")
+
+    // 2. Open Order Session (Order Menu Service)
+    const orderSession = await this.openOrderSession(tableId)
+
+    // 3. Mark Table as Occupied
+    await this.updateStatus(tableId, "OCCUPIED")
+
+    return orderSession
+  }
+
+  async getOrders(tableId: string): Promise<Order[]> {
+    console.log("Table Id: ", tableId)
+    const session = await this.getActiveOrderSession(tableId)
+    if (!session) return []
+    const detailRes = await fetch(`${ORDER_URL}/order-sessions/${session.sessionId}`)
+    if (!detailRes.ok) return []
+    const details = await detailRes.json()
+    return details.orders || []
+  }
+
+  async placeOrder(tableId: string, items: TableOrderItemRequest[]): Promise<Order> {
+    const session = await this.ensureOrderSession(tableId)
+
+    const response = await fetch(
+      `${ORDER_URL}/order-sessions/${session.sessionId}/orders`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((i) => ({
+            menuItemId: i.menuItemId,
+            quantity: i.quantity,
+            specialInstructions: i.specialInstructions || "",
+          })),
+        }),
+      }
     )
-    localStorage.setItem("mock_orders", JSON.stringify(updated))
+    if (!response.ok) throw new Error("Failed to place order")
+    return response.json()
+  }
+
+  async checkout(tableId: string): Promise<void> {
+    const session = await this.getActiveOrderSession(tableId)
+
+    // 1. Close Order Session
+    if (session) {
+      const orderCloseResponse = await fetch(`${ORDER_URL}/order-sessions/${session.sessionId}/close`, {
+        method: "PUT",
+      })
+      if (!orderCloseResponse.ok) throw new Error("Failed to close order session")
+    }
+
+    // 2. Mark the active dining session paid and finish it
+    const diningCheckoutResponse = await fetch(
+      `${TABLE_URL}/dining-sessions/table/${tableId}/checkout`,
+      {
+        method: "PATCH",
+      }
+    )
+    if (!diningCheckoutResponse.ok) {
+      throw new Error("Failed to finish dining session")
+    }
+
+    // 3. Mark Table as Free for compatibility with the table endpoint
+    await this.updateStatus(tableId, "FREE")
   }
 }
 
-export const tableApi: ITableApi = CONFIG.IS_MOCK
-  ? new MockTableApi()
-  : new RealTableApi()
+export const tableApi: ITableApi = new RealTableApi()

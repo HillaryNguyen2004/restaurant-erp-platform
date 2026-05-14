@@ -49,7 +49,22 @@ public class CourseService {
         }
 
         List<KitchenTicket> existing = ticketRepository.findByCourseType(orderId, normalized);
-        return existing.stream().noneMatch(KitchenTicket::isActive);
+
+        boolean hasActiveTicket = existing.stream().anyMatch(KitchenTicket::isActive);
+
+        System.out.println("DEBUG canFireCourse orderId=" + orderId);
+        System.out.println("DEBUG courseType=" + normalized);
+        System.out.println("DEBUG courseItems.size=" + courseItems.size());
+        System.out.println("DEBUG courseItems=" + courseItems);
+        System.out.println("DEBUG existingTickets.size=" + existing.size());
+        System.out.println("DEBUG existingTickets=" + existing);
+        System.out.println("DEBUG hasActiveTicket=" + hasActiveTicket);
+
+        if (courseItems.isEmpty()) {
+            return false;
+        }
+
+        return !hasActiveTicket;
     }
 
     public List<String> getPendingCourses(String orderId) {

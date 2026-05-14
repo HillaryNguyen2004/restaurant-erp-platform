@@ -62,6 +62,16 @@ export class DiningSessionControllerImpl implements IDiningSessionController {
     return this.diningSessionService.finishSession(sessionId);
   }
 
+  @Patch('table/:tableId/checkout')
+  @ApiOperation({ summary: 'Mark active dining session paid and finish it' })
+  @ApiParam({ name: 'tableId', example: 'uuid' })
+  @ApiResponse({ status: 200 })
+  checkoutActiveSessionByTable(
+    @Param('tableId') tableId: string,
+  ): Promise<void> {
+    return this.diningSessionService.checkoutActiveSessionByTable(tableId);
+  }
+
   @Get(':sessionId/remaining-time')
   @ApiOperation({ summary: 'Get remaining service time for a dining session' })
   @ApiParam({ name: 'sessionId', example: 'uuid' })

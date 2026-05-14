@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const TableStatusSchema = z.enum([
-  'AVAILABLE',
+  'FREE',
   'RESERVED',
   'OCCUPIED',
   'OUT_OF_ORDER',
@@ -9,9 +9,10 @@ export const TableStatusSchema = z.enum([
 export type TableStatus = z.infer<typeof TableStatusSchema>;
 
 export const TableSchema = z.object({
-  id: z.string(),
+  tableId: z.string(),
   tableNumber: z.string(),
   capacity: z.number(),
   status: TableStatusSchema,
+  zone: z.string(),
 });
 export type Table = z.infer<typeof TableSchema>;

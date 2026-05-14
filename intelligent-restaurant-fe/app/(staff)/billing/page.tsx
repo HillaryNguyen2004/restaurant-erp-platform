@@ -1,6 +1,6 @@
 "use client"
 
-import { useRealtime } from "@/providers/realtime-provider"
+import { useTablesRealtime } from "@/providers/realtime-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,8 +9,7 @@ import {
   TableStatus,
   Table,
 } from "@/features/table-management/config/table.config"
-import { tableApi } from "@/features/table-management/data-access/table.api"
-import { useQuery } from "@tanstack/react-query"
+import { useTables } from "@/features/table-management/data-access/table.queries"
 import { LogOut, Receipt } from "lucide-react"
 import { useState } from "react"
 import { TableDetailSheet } from "@/features/table-management/components/table-detail-sheet"
@@ -19,25 +18,28 @@ export default function BillingPage() {
   const { logout } = useAuth()
 
   const [selectedTable, setSelectedTable] = useState<Table | null>(null)
-  const { data: tables, isLoading } = useQuery({
-    queryKey: ["tables"],
-    queryFn: tableApi.getTables,
-  })
+  // Disable REST polling; table state is streamed via WebSocket below.
+  const { data: tables, isLoading } = useTables({ enablePolling: false })
 
-  if (isLoading) return <div className="p-8">Loading Billing...</div>
+  // Open a realtime channel for restaurant-wide table state updates.
+  // The RealtimeProvider invalidates the `["tables"]` query on relevant
+  // events (table.state-changed, dining-session.*), keeping the grid live.
+  useTablesRealtime()
+
+  if (isLoading) return <div className="p-8 text-center">Loading Billing...</div>
 
   const getStatusColor = (status: TableStatus) => {
     switch (status) {
-      case "AVAILABLE":
-        return "bg-green-500"
+      case "FREE":
+        return "bg-emerald-500"
       case "OCCUPIED":
-        return "bg-red-500"
+        return "bg-rose-500"
       case "RESERVED":
         return "bg-blue-500"
       case "OUT_OF_ORDER":
-        return "bg-gray-500"
+        return "bg-slate-500"
       default:
-        return "bg-gray-500"
+        return "bg-slate-500"
     }
   }
 
@@ -69,7 +71,7 @@ export default function BillingPage() {
       <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {tables?.map((table) => (
           <Card
-            key={table.id}
+            key={table.tableId}
             className={`overflow-hidden border-2 transition-all cursor-pointer hover:shadow-xl hover:scale-[1.02] ${
               table.status === "OCCUPIED" ? "border-emerald-500/20 bg-emerald-50/10" : "border-slate-100"
             }`}

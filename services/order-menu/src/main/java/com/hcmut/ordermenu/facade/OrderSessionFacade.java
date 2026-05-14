@@ -1,5 +1,8 @@
 package com.hcmut.ordermenu.facade;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.hcmut.ordermenu.domain.entity.Order;
 import com.hcmut.ordermenu.domain.entity.OrderItem;
 import com.hcmut.ordermenu.domain.entity.OrderSession;
@@ -44,7 +47,7 @@ public class OrderSessionFacade {
     public OrderSessionDto getSession(UUID sessionId) {
         OrderSession session = orderSessionRetriever.getById(sessionId);
         if (session == null) {
-            throw new IllegalArgumentException("Session not found: " + sessionId);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found: " + sessionId);
         }
         return toSessionDto(session);
     }
@@ -52,7 +55,7 @@ public class OrderSessionFacade {
     public OrderSessionDto getSessionByTable(UUID tableId) {
         OrderSession session = orderSessionRetriever.getActiveByTable(tableId);
         if (session == null) {
-            throw new IllegalArgumentException("Active session not found for table: " + tableId);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Active session not found for table: " + tableId);
         }
         return toSessionDto(session);
     }

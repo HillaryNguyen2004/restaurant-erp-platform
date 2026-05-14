@@ -1,5 +1,6 @@
 package com.hcmut.ordermenu.publisher;
 
+import com.hcmut.ordermenu.adapter.websocket.WebSocketNotificationService;
 import com.hcmut.ordermenu.domain.entity.OrderSession;
 import com.hcmut.ordermenu.domain.events.DomainEvent;
 import com.hcmut.ordermenu.domain.events.DomainEventPublisher;
@@ -26,11 +27,14 @@ class OrderSessionEventPublisherTest {
     @Mock
     private DomainEventPublisher domainEventPublisher;
 
+    @Mock
+    private WebSocketNotificationService webSocketNotificationService;
+
     private OrderSessionEventPublisher publisher;
 
     @BeforeEach
     void setUp() {
-        publisher = new OrderSessionEventPublisher(domainEventPublisher);
+        publisher = new OrderSessionEventPublisher(domainEventPublisher, webSocketNotificationService);
     }
 
     @Test
@@ -46,6 +50,7 @@ class OrderSessionEventPublisherTest {
         DomainEvent event = captor.getValue();
         assertInstanceOf(OrderSessionStartedEvent.class, event);
         assertEquals("order.session.started", event.getEventType());
+        verify(webSocketNotificationService).notifyOrderEvent(event);
     }
 
     @Test
@@ -62,5 +67,6 @@ class OrderSessionEventPublisherTest {
         DomainEvent event = captor.getValue();
         assertInstanceOf(OrderSessionClosedEvent.class, event);
         assertEquals("order.session.closed", event.getEventType());
+        verify(webSocketNotificationService).notifyOrderEvent(event);
     }
 }

@@ -1,0 +1,62 @@
+_format_version: "3.0"
+_transform: true
+
+# --- ADD THIS PLUGINS SECTION ---
+plugins:
+  - name: cors
+    config:
+      origins:
+        - "http://localhost:3000"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Accept-Version
+        - Content-Length
+        - Content-MD5
+        - Content-Type
+        - Date
+        - Authorization
+      exposed_headers:
+        - Authorization
+      credentials: true
+      max_age: 3600
+# --------------------------------
+
+services:
+  - name: user-management-service
+    url: http://user-management-service:8001
+    routes:
+      - name: user-management-route
+        paths:
+          - /user-management
+        strip_path: true
+
+  - name: table-reservation-management-service
+    url: http://table-reservation-management-service:8002
+    routes:
+      - name: table-reservation-management-route
+        paths:
+          - /table-reservation
+        strip_path: true
+
+  - name: order-menu-service
+    url: http://order-menu-service:8003
+    routes:
+      - name: order-menu-route
+        paths:
+          - /order-menu
+        strip_path: false
+
+  - name: kitchen-operation-service
+    url: http://kitchen-operation-service:8004
+    routes:
+      - name: kitchen-operation-route
+        paths:
+          - /kitchen-operation
+        strip_path: false

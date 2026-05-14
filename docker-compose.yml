@@ -59,7 +59,7 @@ services:
       dockerfile: Dockerfile
     container_name: order-menu
     ports:
-      - "8081:8080"
+      - "8003:8003"
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       APP_EVENTS_KAFKA_ENABLED: "true"
@@ -68,6 +68,7 @@ services:
       APP_DB_USERNAME: restaurant
       APP_DB_PASSWORD: restaurant
       APP_DB_SCHEMA: order_menu
+      SERVER_PORT: 8003
     depends_on:
       kafka:
         condition: service_started
@@ -80,7 +81,7 @@ services:
       dockerfile: Dockerfile
     container_name: kitchen-operation
     ports:
-      - "8082:8080"
+      - "8004:8004"
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       APP_EVENTS_KAFKA_ENABLED: "true"
@@ -90,6 +91,7 @@ services:
       APP_DB_USERNAME: restaurant
       APP_DB_PASSWORD: restaurant
       APP_DB_SCHEMA: kitchen_operation
+      SERVER_PORT: 8004
     depends_on:
       kafka:
         condition: service_started

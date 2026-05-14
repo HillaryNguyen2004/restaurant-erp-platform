@@ -22,6 +22,8 @@ import com.hcmut.kitchenoperation.service.CourseService;
 import com.hcmut.kitchenoperation.service.KitchenService;
 import com.hcmut.kitchenoperation.service.TicketAlertEvaluator;
 import com.hcmut.kitchenoperation.service.TicketService;
+
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -139,6 +141,12 @@ public class KitchenController {
         return toTicketDetail(ticket);
     }
 
+    @Deprecated
+    @Operation(
+            summary = "Fire course",
+            description = "Deprecated. Tickets are created automatically when an order is placed. Use PATCH /kitchen/tickets/{ticketId}/status to start or complete cooking.",
+            deprecated = true
+    )
     @PostMapping("/courses/fire")
     public FireCourseResponseDto fireCourse(@RequestBody FireCourseDto dto) {
         List<KitchenTicket> tickets = courseService.fireCourse(dto.getOrderId(), dto.getCourseType(), dto.getFiredByUserId());

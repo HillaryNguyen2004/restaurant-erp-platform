@@ -1,0 +1,192 @@
+# WebSocket needs
+
+Scope: KDS + order-menu only.
+
+Main decision: keep commands and initial reads as REST. Add WebSocket only for server-pushed changes that another screen must see without refresh.
+
+## WebSocket Heartbeat
+
+All WebSocket clients should send a heartbeat message every 25 seconds to keep the connection alive through Kong/API gateway and other proxies.
+
+Client heartbeat message:
+
+```json
+{"type":"ping"}
+```
+
+Server heartbeat response:
+
+```json
+{"type":"pong"}
+```
+
+Rules:
+- The heartbeat message must exactly match {"type":"ping"}.
+- The server replies with {"type":"pong"}.
+- Client commands should not be sent through WebSocket.
+- Unknown client messages are ignored by the server.
+- If the socket closes, frontend should reconnect automatically.
+
+Frontend behavior:
+- Ignore {"type":"pong"} messages.
+- Process backend events using eventType.
+- Use REST for initial reads and commands.
+
+
+## Really Need WebSocket
+
+### 1. KDS ticket stream
+
+Proposed endpoint:
+- `WS /kitchen-operation/ws/kds`
+
+Subscribe by:
+- `stationId`
+
+Events:
+- `kitchen.ticket.created`
+- `kitchen.ticket.status.changed`
+- `kitchen.ticket.alert.triggered`
+
+Why:
+- KDS is a live screen.
+- Frontend currently polls `GET /kitchen-operation/kitchen/stations/{stationId}/tickets` every 10 seconds.
+- New tickets come from order-menu events through kitchen-operation, so kitchen staff need push immediately.
+
+REST stays:
+- `GET /kitchen-operation/kitchen/stations/{stationId}/tickets`
+- `GET /kitchen-operation/kitchen/stations/{stationId}/dashboard`
+- `PATCH /kitchen-operation/kitchen/tickets/{ticketId}/status`
+
+### 2. Order status stream
+
+Proposed endpoint:
+- `WS /order-menu/ws/orders`
+
+Subscribe by:
+- `orderSessionId`
+- optional `tableId`
+
+Events:
+- `order.placed`
+- `order.item.updated`
+- `order.cancelled`
+- `order.status.changed`
+
+Why:
+- Customer/table order sheet needs live status after kitchen changes.
+- Multiple clients can view or edit same order/session.
+- Requesting client already gets REST response, but other clients need push.
+
+REST stays:
+- `POST /order-menu/order-sessions/{orderSessionId}/orders`
+- `PUT /order-menu/order-sessions/{orderSessionId}/orders/{orderId}/cancel`
+- `PUT /order-menu/order-sessions/{orderSessionId}/orders/{orderId}/items/{itemId}`
+
+### 3. Table state stream
+
+Proposed endpoint:
+- `WS /table-reservation/ws/tables`
+
+Subscribe by:
+- nothing (restaurant-wide broadcast)
+
+Events:
+- `table.state-changed`
+- `dining-session.started`
+- `dining-session.extended`
+- `dining-session.finished`
+
+Why:
+- Cashier billing screen (`/billing`) and table map (`/tables`) both render
+  the full table grid and must stay in sync with state changes made by
+  other clients (servers opening tables, checkouts, reservations).
+- Frontend previously polled `GET /table-reservation/tables` every 5s.
+  That poll is dropped on `/billing` in favour of this stream.
+- The `table-reservation-management` service already publishes these
+  events to Kafka; this endpoint is a thin Kafka → WS bridge
+  (`TableWsGateway` + `TableEventsKafkaConsumer`).
+
+REST stays:
+- `GET /table-reservation/tables`
+- `GET /table-reservation/tables/{tableId}`
+- `PATCH /table-reservation/tables/{tableId}/{available|occupied|reserved|out-of-order}`
+- `POST /table-reservation/dining-sessions`
+- `PATCH /table-reservation/dining-sessions/table/{tableId}/checkout`
+
+## Optional WebSocket
+
+### 4. Menu availability stream
+
+Proposed endpoint:
+- `WS /order-menu/ws/menu`
+
+Events:
+- `menu.item.available`
+- `menu.item.unavailable`
+
+Use only if:
+- menu availability can change while customers are ordering
+- stale menu items must disappear or disable immediately
+
+REST stays:
+- `GET /order-menu/menu`
+- `GET /order-menu/menu/categories/{menuCategoryId}/items`
+- `GET /order-menu/menu/items/{itemId}`
+- `PUT /order-menu/menu-management/items/{itemId}/available`
+- `PUT /order-menu/menu-management/items/{itemId}/unavailable`
+
+## Not Needed As WebSocket Now
+
+### KDS
+
+- `POST /kitchen-operation/kitchen/courses/fire`
+  - Deprecated or optional.
+  - Do not use this for chef "start cooking".
+  - Chef start/complete actions should use `PATCH /kitchen-operation/kitchen/tickets/{ticketId}/status`.
+  - Keep only if delayed course firing is needed later.
+- `GET /kitchen-operation/kitchen/tickets/{ticketId}`
+  - Keep REST for detail fetch.
+- `GET /kitchen-operation/kitchen/stations`
+  - Keep REST. Station list is setup data.
+- station create/update/delete routes
+  - Keep REST. Not part of live ticket flow.
+
+### Order Menu
+
+- `POST /order-menu/order-sessions`
+  - Keep REST. Caller needs immediate create response.
+- `PUT /order-menu/order-sessions/{orderSessionId}/close`
+  - Keep REST. Add push later only if another client must be kicked out of active ordering.
+- `GET /order-menu/order-sessions/{orderSessionId}`
+  - Keep REST for initial load.
+- `GET /order-menu/order-sessions/table/{tableId}`
+  - Keep REST for initial load.
+- menu item/category create/update/delete
+  - Keep REST. Push only availability changes for now.
+- promotion create/update/delete
+  - Keep REST. No current KDS/order-menu realtime dependency.
+- `GET /order-menu/promotions/active`
+  - Keep REST.
+
+## Frontend Event Map
+
+- `NEW_TICKET_CREATED` -> `kitchen.ticket.created`
+- `ORDER_STATUS_UPDATED` -> `kitchen.ticket.status.changed` or `order.status.changed`
+- `NEW_ORDER_PLACED` -> `order.placed`
+- `TABLE_STATUS_CHANGED` -> `table.state-changed`
+
+## Kong Routing
+
+Kong (`services/kong.yml`) proxies WebSocket upgrade requests over the same
+HTTP routes as REST. Current mapping relevant to WebSockets:
+
+- `/kitchen-operation/*` -> `kitchen-operation-service:8004` (strip_path: false)
+- `/order-menu/*`        -> `order-menu-service:8003`        (strip_path: false)
+- `/table-reservation/*` -> `table-reservation-management-service:8002` (strip_path: true)
+
+Because `/table-reservation` is configured with `strip_path: true`, the
+backend receives `/ws/tables` (not `/table-reservation/ws/tables`) and
+registers the Fastify route at that path. The frontend still connects to
+`ws://<host>/table-reservation/ws/tables` through Kong.
+

@@ -1,81 +1,54 @@
 import { CONFIG } from '@/lib/config';
-import { Order, OrderStatus } from '../config/order.config';
-import { KitchenTicket } from '@/features/kds/config/kds.config';
+import { Order, OrderSession } from '../config/order.config';
+
+export type PlaceOrderItemRequest = {
+  menuItemId: string
+  quantity: number
+  specialInstructions?: string
+}
 
 export interface IOrderApi {
-  getOrders(): Promise<Order[]>;
-  placeOrder(order: Omit<Order, 'id' | 'createdAt' | 'status'>): Promise<Order>;
-  updateStatus(orderId: string, status: OrderStatus): Promise<Order>;
+  getOrdersBySession(sessionId: string): Promise<Order[]>;
+  getSessionByTable(tableId: string): Promise<OrderSession | null>;
+  placeOrder(sessionId: string, items: PlaceOrderItemRequest[]): Promise<Order>;
+  cancelOrder(sessionId: string, orderId: string, reason: string): Promise<void>;
 }
 
-class MockOrderApi implements IOrderApi {
-  async getOrders(): Promise<Order[]> {
-    const saved = localStorage.getItem('mock_orders');
-    return saved ? JSON.parse(saved) : [];
-  }
-
-  async placeOrder(order: Omit<Order, 'id' | 'createdAt' | 'status'>): Promise<Order> {
-    const newOrder: Order = {
-      ...order,
-      id: `ord-${Math.random().toString(36).substr(2, 9)}`,
-      status: 'PLACED',
-      createdAt: new Date().toISOString(),
-    };
-    const saved = localStorage.getItem('mock_orders');
-    const orders = saved ? JSON.parse(saved) : [];
-    orders.push(newOrder);
-    localStorage.setItem('mock_orders', JSON.stringify(orders));
-    return newOrder;
-  }
-
-  async updateStatus(orderId: string, status: OrderStatus): Promise<Order> {
-    const saved = localStorage.getItem('mock_orders');
-    const orders = saved ? JSON.parse(saved) : [];
-    const order = orders.find((o: Order) => o.id === orderId);
-    if (order) {
-      order.status = status;
-      
-      // Sync with mock_tickets for consistency
-      if (status === 'CANCELLED') {
-        const savedTickets = localStorage.getItem('mock_tickets');
-        if (savedTickets) {
-          const tickets = JSON.parse(savedTickets);
-          const ticket = tickets.find((t: KitchenTicket) => t.orderId === orderId);
-          if (ticket) {
-            ticket.status = 'CANCELLED';
-            localStorage.setItem('mock_tickets', JSON.stringify(tickets));
-          }
-        }
-      }
-    }
-    localStorage.setItem('mock_orders', JSON.stringify(orders));
-    return order;
-  }
-}
+const API_URL = `${CONFIG.API_URL}/order-menu`
 
 class RealOrderApi implements IOrderApi {
-  async getOrders(): Promise<Order[]> {
-    const response = await fetch(`${CONFIG.API_URL}/orders`);
+  async getOrdersBySession(sessionId: string): Promise<Order[]> {
+    const response = await fetch(`${API_URL}/order-sessions/${sessionId}`);
+    if (!response.ok) throw new Error("Failed to fetch order session");
+    const data = await response.json();
+    return data.orders || [];
+  }
+
+  async getSessionByTable(tableId: string): Promise<OrderSession | null> {
+    const response = await fetch(`${API_URL}/order-sessions/table/${tableId}`);
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error("No active session for table");
     return response.json();
   }
 
-  async placeOrder(order: Omit<Order, 'id' | 'createdAt' | 'status'>): Promise<Order> {
-    const response = await fetch(`${CONFIG.API_URL}/orders`, {
+  async placeOrder(sessionId: string, items: PlaceOrderItemRequest[]): Promise<Order> {
+    const response = await fetch(`${API_URL}/order-sessions/${sessionId}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(order),
+      body: JSON.stringify({ items }),
     });
+    if (!response.ok) throw new Error("Failed to place order");
     return response.json();
   }
 
-  async updateStatus(orderId: string, status: OrderStatus): Promise<Order> {
-    const response = await fetch(`${CONFIG.API_URL}/orders/${orderId}/status`, {
-      method: 'PATCH',
+  async cancelOrder(sessionId: string, orderId: string, reason: string): Promise<void> {
+    const response = await fetch(`${API_URL}/order-sessions/${sessionId}/orders/${orderId}/cancel`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(reason),
     });
-    return response.json();
+    if (!response.ok) throw new Error("Failed to cancel order");
   }
 }
 
-export const orderApi: IOrderApi = CONFIG.IS_MOCK ? new MockOrderApi() : new RealOrderApi();
+export const orderApi: IOrderApi = new RealOrderApi();

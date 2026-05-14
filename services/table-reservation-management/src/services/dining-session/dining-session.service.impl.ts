@@ -163,6 +163,26 @@ export class DiningSessionServiceImpl implements IDiningSessionService {
     await this.eventPublisher.publishTableStateChanged(savedTable);
   }
 
+  async checkoutActiveSessionByTable(tableId: string): Promise<void> {
+    const session = await this.sessionRepo.findActiveByTableId(tableId);
+
+    if (!session) {
+      return;
+    }
+
+    const table = await this.getTableOrThrow(tableId);
+
+    session.markPaid();
+    session.finish();
+    table.markAvailable();
+
+    const savedSession = await this.sessionRepo.save(session);
+    const savedTable = await this.tableRepo.save(table);
+
+    await this.eventPublisher.publishDiningSessionFinished(savedSession);
+    await this.eventPublisher.publishTableStateChanged(savedTable);
+  }
+
   async getRemainingServiceTime(
     sessionId: string,
   ): Promise<ServiceTimeResponseDto> {

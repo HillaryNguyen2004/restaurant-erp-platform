@@ -3,14 +3,42 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ClipboardList, Clock } from 'lucide-react';
-import { orderQueries } from '../data-access/order.queries';
+import { useEffect, useState } from 'react';
+import { getOrderSessionId } from '../config/order.config';
+import { useOrdersBySession, useSessionByTable } from '../data-access/order.queries';
+import { useAuth } from '@/features/auth/components/auth-provider';
+import { useOrderSessionRealtime } from '@/providers/realtime-provider';
 
 export function ActiveOrdersSheet() {
-  const { data: orders, isLoading } = orderQueries.useOrders();
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const { data: session } = useSessionByTable(user?.id);
+  const sessionId = getOrderSessionId(session);
+  useOrderSessionRealtime(sessionId || undefined, user?.id);
+  const { data: orders, isLoading } = useOrdersBySession(sessionId || '');
 
-  // In a real app, we'd filter by the current session/table
-  // For now, we'll show all orders placed at table 'A1' (mock table)
-  const tableOrders = orders?.filter(o => o.tableNumber === 'A1') || [];
+  const tableOrders = orders || [];
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        event: string;
+        data?: { orderSessionId?: string; tableId?: string };
+      }>;
+      const eventName = customEvent.detail.event;
+      const data = customEvent.detail.data;
+
+      if (
+        eventName === 'order.session.closed' &&
+        (data?.orderSessionId === sessionId || data?.tableId === user?.id)
+      ) {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener('realtime_event', handler);
+    return () => window.removeEventListener('realtime_event', handler);
+  }, [sessionId, user?.id]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -24,7 +52,7 @@ export function ActiveOrdersSheet() {
   };
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" className="gap-2">
           <ClipboardList className="w-4 h-4" />
@@ -49,10 +77,10 @@ export function ActiveOrdersSheet() {
             </div>
           ) : (
             tableOrders.map((order) => (
-              <div key={order.id} className="space-y-3 p-4 rounded-lg border bg-card">
+              <div key={order.orderId} className="space-y-3 p-4 rounded-lg border bg-card">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    #{order.id.slice(-6)}
+                    #{order.orderId.slice(-6)}
                   </span>
                   <Badge className={`border-none ${getStatusColor(order.status)}`}>
                     {order.status}
@@ -63,7 +91,7 @@ export function ActiveOrdersSheet() {
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-sm">
                       <span>{item.quantity}x {item.menuItemName}</span>
-                      <span className="text-muted-foreground">${item.price * item.quantity}</span>
+                      <span className="text-muted-foreground">${item.unitPrice * item.quantity}</span>
                     </div>
                   ))}
                 </div>
@@ -73,9 +101,9 @@ export function ActiveOrdersSheet() {
                 <div className="flex justify-between items-center pt-1">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock className="w-3 h-3" />
-                    {new Date(order.createdAt).toLocaleTimeString()}
+                    {new Date(order.placedAt).toLocaleTimeString()}
                   </div>
-                  <div className="font-bold">Total: ${order.total}</div>
+                  <div className="font-bold">Total: ${order.subtotal}</div>
                 </div>
               </div>
             )).reverse() // Show newest first

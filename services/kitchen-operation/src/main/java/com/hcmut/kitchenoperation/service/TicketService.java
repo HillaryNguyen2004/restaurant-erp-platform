@@ -9,6 +9,7 @@ import com.hcmut.kitchenoperation.port.IClock;
 import com.hcmut.kitchenoperation.port.IEventPublisher;
 import com.hcmut.kitchenoperation.port.INotificationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -16,9 +17,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TicketService {
     private final IKitchenTicketRepository ticketRepository;
     private final TicketPriorityCalculator priorityCalculator;
@@ -52,15 +55,24 @@ public class TicketService {
         ticket.setPriority(priorityCalculator.calculatePriority(ticket));
         KitchenTicket updated = ticketRepository.update(ticket);
 
-        eventPublisher.publish(new TicketStatusChangedEvent(
+        TicketStatusChangedEvent event = new TicketStatusChangedEvent(
                 updated.getId(),
                 updated.getOrderId(),
+                updated.getStationId(),
                 oldStatus,
                 updated.getStatus(),
                 userId
-        ));
+        );
+        eventPublisher.publish(event);
+        notificationService.notifyStation(updated.getStationId(), event);
 
-        checkAndTriggerAlert(updated);
+        CompletableFuture.runAsync(() -> {
+            try {
+                checkAndTriggerAlert(updated);
+            } catch (RuntimeException ex) {
+                log.warn("ticket-alert-evaluation-failed ticketId={}", updated.getId(), ex);
+            }
+        });
         return updated;
     }
 
@@ -99,7 +111,8 @@ public class TicketService {
         }
 
         TicketAlert alert = alertEvaluator.evaluateTicket(ticket, now);
-        eventPublisher.publish(new TicketAlertTriggeredEvent(alert));
-        notificationService.notifyStation(ticket.getStationId(), alert);
+        TicketAlertTriggeredEvent event = new TicketAlertTriggeredEvent(alert);
+        eventPublisher.publish(event);
+        notificationService.notifyStation(ticket.getStationId(), event);
     }
 }

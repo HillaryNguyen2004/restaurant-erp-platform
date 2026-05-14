@@ -5,6 +5,7 @@ import com.hcmut.ordermenu.domain.events.DomainEvent;
 import com.hcmut.ordermenu.domain.events.DomainEventPublisher;
 import com.hcmut.ordermenu.domain.events.menu.MenuItemAvailabilityChangedEvent;
 import com.hcmut.ordermenu.domain.events.menu.MenuItemCreatedEvent;
+import com.hcmut.ordermenu.adapter.websocket.WebSocketNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,11 +28,14 @@ class MenuEventPublisherTest {
     @Mock
     private DomainEventPublisher domainEventPublisher;
 
+    @Mock
+    private WebSocketNotificationService webSocketNotificationService;
+
     private MenuEventPublisher publisher;
 
     @BeforeEach
     void setUp() {
-        publisher = new MenuEventPublisher(domainEventPublisher);
+        publisher = new MenuEventPublisher(domainEventPublisher, webSocketNotificationService);
     }
 
     @Test
@@ -64,5 +68,6 @@ class MenuEventPublisherTest {
         assertInstanceOf(MenuItemAvailabilityChangedEvent.class, event);
         assertEquals("menu.item.unavailable", event.getEventType());
         assertEquals("out of stock", event.toPayload().get("reason"));
+        verify(webSocketNotificationService).notifyMenuEvent(event);
     }
 }

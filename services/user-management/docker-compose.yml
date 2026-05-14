@@ -7,9 +7,9 @@ services:
       dockerfile: Dockerfile.dev
     container_name: user-management-service
     ports:
-      - "3000:3000"
+      - "8001:8001"
     environment:
-      PORT: 3000
+      PORT: 8001
       JWT_SECRET: dev-secret
       NODE_ENV: development
       KAFKA_BROKER: kafka:9092
