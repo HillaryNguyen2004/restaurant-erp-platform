@@ -26,8 +26,28 @@ The central premise of the system is for basic operations of medium-sized restau
  <li>
 Analytics: sales reports, reservation statistics, operational analytics, order trends, kitchen performance metrics.
  </li>
+ 
 </ul>
-  Moreover, we also include these requirements for the system:
+In terms of technologies, we employ a multi-language tech stack:
+<ul>
+ <li>
+  Frontend: NextJS + TailwindCSS with Websocket integration for event listeners.
+ </li>
+ <li>
+  Backend: NestJS (for user-management and table reservation and management), SpringBoot (for kitchen operation and ordering-menu), demonstrating the system's ability to adapt with multiple frameworks and languages.
+ </li>
+ <li>
+  Database: PostgreSQL.
+ </li>
+ <li>
+  Broker: Kafka.
+ </li>
+ <li>
+  API Gateway: Kong Gateway.
+ </li>
+ 
+</ul>
+  Moreover, we also include these (non-functional) requirements for the system:
   <ul>
  <li>
    Realtime Communication: event-driven updates between services using Kafka and WebSocket-based notifications for frontend clients.
@@ -44,4 +64,9 @@ Analytics: sales reports, reservation statistics, operational analytics, order t
     <li>
       Packaging and Deployment: fully dockerized and battle-tested for deployment.
     </li>
+  
+   <li>
+    Testing: Comprehensive Playwright testing.
+   </li>
 </ul>
+
