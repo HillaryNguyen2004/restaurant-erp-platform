@@ -96,7 +96,11 @@ class RealAuthApi implements IAuthApi {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    if (!response.ok) throw new Error('Login failed');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Login error response:', response.status, errorText);
+      throw new Error(`Login failed: ${response.status} ${errorText}`);
+    }
     const tokens: IAuthResponse = await response.json();
     
     const payload = decodeJwt(tokens.accessToken);

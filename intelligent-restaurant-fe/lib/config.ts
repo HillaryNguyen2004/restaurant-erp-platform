@@ -1,5 +1,5 @@
 export const CONFIG = {
-  IS_MOCK: false, // Default to true for now as requested
+  IS_MOCK: true, // Default to true for now as requested
   API_URL: 'http://localhost:8000',
   WS_URL: 'ws://localhost:8000',
 };
