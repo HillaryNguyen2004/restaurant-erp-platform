@@ -112,6 +112,16 @@ export class TableWsGateway implements OnModuleInit, OnApplicationShutdown {
   }
 
   private handleConnection(socket: WebSocket, request: FastifyRequest): void {
+    // A plain (non-upgrade) GET on this route makes @fastify/websocket invoke
+    // the handler in HTTP mode, where `socket` is a FastifyRequest rather than
+    // a WebSocket. Bail out instead of throwing on `socket.on`.
+    if (typeof socket?.on !== 'function') {
+      this.logger.warn(
+        `Ignoring non-WebSocket request on ${WS_ROUTE} (missing Upgrade header)`,
+      );
+      return;
+    }
+
     this.clients.add(socket);
     this.logger.log(
       `WS client connected from ${request.ip}; total=${this.clients.size}`,

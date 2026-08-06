@@ -187,6 +187,10 @@ function useRealtimeSocket(path: string | null) {
       }
 
       socket.onerror = (error) => {
+        // Ignore errors caused by our own teardown (React StrictMode
+        // double-mounts effects in dev, which closes a still-CONNECTING
+        // socket and surfaces a spurious error event).
+        if (closedByEffect) return
         console.error("[Realtime] WebSocket error", error)
       }
 
@@ -204,7 +208,19 @@ function useRealtimeSocket(path: string | null) {
       closedByEffect = true
       stopHeartbeat()
       if (reconnectTimer) clearTimeout(reconnectTimer)
-      socket?.close()
+
+      if (!socket) return
+
+      // Closing a socket that is still CONNECTING aborts the handshake and
+      // logs "closed before the connection is established". Wait for the
+      // handshake to finish, then close cleanly.
+      if (socket.readyState === WebSocket.CONNECTING) {
+        const pending = socket
+        pending.onopen = () => pending.close()
+        return
+      }
+
+      socket.close()
     }
   }, [path, processEvent])
 }
